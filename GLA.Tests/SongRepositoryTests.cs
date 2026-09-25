@@ -19,7 +19,7 @@ public class SongRepositoryTests : IDisposable
     public async Task GetById_ExistingSong_ReturnsSong()
     {
         var added = _db.Context.Songs.Add(
-            new SongEntity { Title = "Fade to Black", Author = "Metallica", FilePath = "/FadeToBlack.gp5" });
+            new SongEntity { Title = "Fade to Black", Author = "Metallica", FilePath = "FadeToBlack.gp5" });
         await _db.Context.SaveChangesAsync();
 
         var result = await _repository.GetByIdAsync(added.Entity.Id);
@@ -27,7 +27,7 @@ public class SongRepositoryTests : IDisposable
         Assert.NotNull(result);
         Assert.Equal("Fade to Black", result.Title);
         Assert.Equal("Metallica", result.Author);
-        Assert.Equal("/FadeToBlack.gp5", result.FilePath);
+        Assert.Equal("FadeToBlack.gp5", result.FilePath);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class SongRepositoryTests : IDisposable
     public async Task GetById_ReturnsUntrackedEntity()
     {
         var added = _db.Context.Songs.Add(
-            new SongEntity { Title = "Everlong", Author = "Foo Fighters", FilePath = "/Everlong.gp5" });
+            new SongEntity { Title = "Everlong", Author = "Foo Fighters", FilePath = "Everlong.gp5" });
         await _db.Context.SaveChangesAsync();
         _db.Context.ChangeTracker.Clear();
 
@@ -57,9 +57,9 @@ public class SongRepositoryTests : IDisposable
     {
         _db.ClearSongs();
         _db.Context.Songs.AddRange(
-            new SongEntity { Title = "B", Author = "Author B", FilePath = "/b.gp5" },
-            new SongEntity { Title = "A", Author = "Author A", FilePath = "/a.gp5" },
-            new SongEntity { Title = "C", Author = "Author C", FilePath = "/c.gp5" });
+            new SongEntity { Title = "B", Author = "Author B", FilePath = "b.gp5" },
+            new SongEntity { Title = "A", Author = "Author A", FilePath = "a.gp5" },
+            new SongEntity { Title = "C", Author = "Author C", FilePath = "c.gp5" });
         await _db.Context.SaveChangesAsync();
 
         var result = await _repository.ListAsync();
@@ -85,7 +85,7 @@ public class SongRepositoryTests : IDisposable
     {
         var result = await _repository.ListAsync();
 
-        Assert.Equal(3, result.Count);
-        Assert.Contains(result, s => s.Title == "Paranoid Android" && s.Author == "Radiohead");
+        Assert.Equal(4, result.Count);
+        Assert.Contains(result, s => s.Id == 1 && s.Title == "Stairway to Heaven" && s.Author == "Led Zeppelin");
     }
 }

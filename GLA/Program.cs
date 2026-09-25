@@ -13,6 +13,16 @@ builder.Services.AddDbContext<GlaDbContext>(options =>
 builder.Services.AddScoped<ISongRepository, SongRepository>();
 builder.Services.AddScoped<ISongService, SongService>();
 
+// Score files live in a folder outside the web root (Songs:FilesRoot);
+// relative paths are resolved against the content root (the GLA/ project
+// folder in development, see appsettings.Development.json).
+var filesRoot = builder.Configuration["Songs:FilesRoot"] ?? "storage";
+if (!Path.IsPathRooted(filesRoot))
+{
+    filesRoot = Path.Combine(builder.Environment.ContentRootPath, filesRoot);
+}
+builder.Services.AddSingleton(new ScoreFileLocator(filesRoot));
+
 // JSON: System.Text.Json with camelCase (ASP.NET Core defaults), configured
 // explicitly so the contract is visible. The Vite dev proxy forwards /api to this
 // origin, so CORS is not needed in development; this policy exists for direct

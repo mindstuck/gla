@@ -72,10 +72,16 @@ vite.config.ts.timestamp-*
 
 # --- Uploaded / generated artifacts (GLA) ---
 # Uploaded score files and parsed results should not be committed
+# (storage/ holds user-provided score files, e.g. Guitar Pro downloads)
 uploads/
+storage/
 *.gp
+*.gp3
+*.gp4
 *.gp5
 *.gpx
 *.mid
+*.midi
+*.cap
 *.musicxml
 *.mxl

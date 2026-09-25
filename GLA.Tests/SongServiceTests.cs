@@ -10,7 +10,7 @@ public class SongServiceTests
         Id = 1,
         Title = "Paranoid Android",
         Author = "Radiohead",
-        FilePath = "/ParanoidAndroid.gp5",
+        FilePath = "ParanoidAndroid.gp5",
     };
 
     private static readonly SongEntity BlackHoleSun = new()
@@ -18,7 +18,7 @@ public class SongServiceTests
         Id = 2,
         Title = "Black Hole Sun",
         Author = "Soundgarden",
-        FilePath = "/BlackHoleSun.gp4",
+        FilePath = "BlackHoleSun.gp4",
     };
 
     private static SongService CreateService(params SongEntity[] songs) =>
@@ -35,7 +35,7 @@ public class SongServiceTests
         Assert.Equal(1, result.Id);
         Assert.Equal("Paranoid Android", result.Title);
         Assert.Equal("Radiohead", result.Author);
-        Assert.Equal("/ParanoidAndroid.gp5", result.FilePath);
+        Assert.Equal("ParanoidAndroid.gp5", result.FilePath);
     }
 
     [Fact]

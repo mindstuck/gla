@@ -23,27 +23,36 @@ public class GlaDbContext(DbContextOptions<GlaDbContext> options) : DbContext(op
             new SongEntity
             {
                 Id = 1,
-                Title = "Paranoid Android",
-                Author = "Radiohead",
-                FilePath = "/ParanoidAndroid.gp5",
+                Title = "Stairway to Heaven",
+                Author = "Led Zeppelin",
+                FilePath = "led-zeppelin-stairway_to_heaven.gp4",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate,
             },
             new SongEntity
             {
                 Id = 2,
-                Title = "Black Hole Sun",
-                Author = "Soundgarden",
-                FilePath = "/BlackHoleSun.gp4",
+                Title = "Paranoid Android",
+                Author = "Radiohead",
+                FilePath = "ParanoidAndroid.gp5",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate,
             },
             new SongEntity
             {
                 Id = 3,
+                Title = "Black Hole Sun",
+                Author = "Soundgarden",
+                FilePath = "BlackHoleSun.gp4",
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate,
+            },
+            new SongEntity
+            {
+                Id = 4,
                 Title = "Nothing Else Matters",
                 Author = "Metallica",
-                FilePath = "/NothingElseMatters.gp5",
+                FilePath = "NothingElseMatters.gp5",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate,
             });
