@@ -18,7 +18,7 @@ defineEmits<{
     <button
       type="button"
       aria-label="Stop"
-      class="rounded-md bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
       @click="$emit('stop')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -29,7 +29,7 @@ defineEmits<{
     <button
       type="button"
       aria-label="Play"
-      class="rounded-md bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
       @click="$emit('play')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -40,7 +40,7 @@ defineEmits<{
     <button
       type="button"
       aria-label="Pause"
-      class="rounded-md bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
       @click="$emit('pause')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
