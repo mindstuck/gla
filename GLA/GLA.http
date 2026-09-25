@@ -1,0 +1,8 @@
+@GLA_HostAddress = http://localhost:5233
+
+### Placeholder for upcoming endpoints
+
+GET {{GLA_HostAddress}}/
+Accept: application/json
+
+###
