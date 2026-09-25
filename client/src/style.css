@@ -1,1 +1,22 @@
 @import 'tailwindcss';
+
+/*
+ * GLA palette
+ */
+@theme {
+  /* Backgrounds */
+  --color-forest: #023020; /* deep forest green — page (parent) background */
+  --color-bottle: #004b2b; /* noble bottle green — secondary background (main column) */
+  --color-tartan: #0b2b26; /* tartan green — special background (rare usage) */
+
+  /* Text */
+  --color-gold: #d4af37; /* primary text */
+  --color-cream: #e6d7c3; /* secondary text */
+  --color-clay: #c36a4b; /* special text (rare usage) */
+}
+
+@layer base {
+  body {
+    background-color: var(--color-forest);
+  }
+}

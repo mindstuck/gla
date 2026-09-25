@@ -1,3 +1,13 @@
+<template>
+  <div
+    class="m-4 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gold/30 bg-tartan p-6"
+  >
+    <p class="text-gold">Score viewport — notes &amp; tabs render here</p>
+    <p class="text-xs text-cream/60">Rendering arrives with the alphaTab integration</p>
+    <p v-if="filePath" class="font-mono text-xs text-cream/50">{{ filePath }}</p>
+  </div>
+</template>
+
 <script setup lang="ts">
 /**
  * Placeholder for the score viewport.
@@ -12,13 +22,3 @@ defineProps<{
   filePath?: string
 }>()
 </script>
-
-<template>
-  <div
-    class="m-4 flex min-h-0 flex-1 flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 p-6"
-  >
-    <p class="text-slate-400">Score viewport — notes &amp; tabs render here</p>
-    <p class="text-xs text-slate-600">Rendering arrives with the alphaTab integration</p>
-    <p v-if="filePath" class="font-mono text-xs text-slate-500">{{ filePath }}</p>
-  </div>
-</template>
