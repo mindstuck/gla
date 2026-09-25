@@ -4,7 +4,7 @@
       <h1 class="text-xl font-semibold tracking-wide text-emerald-400">GLA</h1>
     </header>
 
-    <main class="flex-1">
+    <main class="flex min-h-0 flex-1 flex-col">
       <router-view />
     </main>
   </div>
