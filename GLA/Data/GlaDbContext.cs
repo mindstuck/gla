@@ -55,6 +55,15 @@ public class GlaDbContext(DbContextOptions<GlaDbContext> options) : DbContext(op
                 FilePath = "NothingElseMatters.gp5",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate,
+            },
+            new SongEntity
+            {
+                Id = 5,
+                Title = "Gnossienne No. 1",
+                Author = "Erik Satie",
+                FilePath = "satie_erik-gnossienne_no_1.gp4",
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate,
             });
     }
 }

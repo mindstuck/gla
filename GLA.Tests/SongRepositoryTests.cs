@@ -85,7 +85,7 @@ public class SongRepositoryTests : IDisposable
     {
         var result = await _repository.ListAsync();
 
-        Assert.Equal(4, result.Count);
+        Assert.Equal(5, result.Count);
         Assert.Contains(result, s => s.Id == 1 && s.Title == "Stairway to Heaven" && s.Author == "Led Zeppelin");
     }
 }

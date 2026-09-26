@@ -102,7 +102,8 @@ endpoint streams it to the client, where alphaTab renders it in the score viewpo
 
 - **Migrations**: `dotnet tool restore`, then
   `dotnet ef migrations add <Name> --project GLA --startup-project GLA`
-- **Seed data**: 4 songs are inserted by the `ReSeedSongs` migration
+- **Seed data**: 5 songs are seeded — `ReSeedSongs` (ids 1–4) and
+  `AddGnossienneSeed` (id 5, Satie's *Gnossienne No. 1*)
 - **Connection string**: `GLA/appsettings.Development.json` (dev-only SA password,
   mirrored in `docker-compose.yml`)
 - **alphaTab assets**: Bravura fonts and the SONiVOX soundfont are copied from
