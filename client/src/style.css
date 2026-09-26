@@ -16,6 +16,12 @@
 }
 
 @layer base {
+  html {
+    /* Reserve the browser scrollbar's width on the right so page content
+       never runs underneath it (and never shifts when it appears). */
+    scrollbar-gutter: stable;
+  }
+
   body {
     background-color: var(--color-forest);
   }

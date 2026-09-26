@@ -1,10 +1,13 @@
 import tailwindcss from '@tailwindcss/vite'
+import { alphaTab } from '@coderline/alphatab-vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), tailwindcss()],
+  // alphaTab: the plugin wires up Web Workers + Audio Worklets and copies the
+  // bundled Bravura font and SONiVOX soundfont to /font and /soundfont.
+  plugins: [vue(), tailwindcss(), alphaTab()],
   server: {
     proxy: {
       // Same-origin in development: the API client can call '/api/...' directly,

@@ -65,7 +65,7 @@ function onPause(): void {}
 
     <!-- Ready -->
     <template v-else-if="store.song">
-      <ScoreViewport :file-path="store.song.filePath" />
+      <ScoreViewport :song-id="store.song.id" :file-path="store.song.filePath" />
 
       <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
         <PlayerControls @stop="onStop" @play="onPlay" @pause="onPause" />
