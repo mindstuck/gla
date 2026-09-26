@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-2 border-dashed border-gold/30 bg-tartan"
+    class="relative m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-dashed border-gold/70 bg-tartan"
   >
     <!-- Placeholder when the song has no score file configured -->
     <div v-if="!filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -19,13 +19,14 @@
            Cream "paper": alphaTab draws notation on a transparent surface. -->
       <div
         ref="scroller"
-        class="min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
+        class="score-scrollbar min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
       >
         <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
         <div ref="host" />
       </div>
 
-      <p v-if="phase === 'ready'" class="px-3 pb-2 pt-1 text-center font-mono text-[10px] text-cream/40">
+      <!-- Continues the score's cream "paper" below the scroller. -->
+      <p v-if="phase === 'ready'" class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60">
         {{ filePath }}
       </p>
 
