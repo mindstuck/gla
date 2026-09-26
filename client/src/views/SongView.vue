@@ -32,7 +32,7 @@ function onPause(): void {}
     <!-- Loading -->
     <div
       v-if="store.loading"
-      class="flex flex-1 items-center justify-center text-slate-500"
+      class="flex flex-1 items-center justify-center text-cream/60"
       role="status"
     >
       <span class="animate-pulse">Loading song…</span>
@@ -40,11 +40,11 @@ function onPause(): void {}
 
     <!-- Not found (404 or malformed route id) -->
     <div v-else-if="store.notFound || !Number.isInteger(songId) || songId < 1" class="flex flex-1 flex-col items-center justify-center gap-3">
-      <p class="text-lg text-slate-300">Song not found</p>
-      <p class="text-sm text-slate-500">No song with id {{ route.params.id }}.</p>
+      <p class="text-lg text-gold">Song not found</p>
+      <p class="text-sm text-cream/60">No song with id {{ route.params.id }}.</p>
       <router-link
         to="/"
-        class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500"
+        class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
       >
         Back to songs
       </router-link>
@@ -52,11 +52,11 @@ function onPause(): void {}
 
     <!-- Error -->
     <div v-else-if="store.error" class="flex flex-1 flex-col items-center justify-center gap-3">
-      <p class="text-lg text-slate-300">Couldn't load the song</p>
-      <p class="text-sm text-slate-500">{{ store.error }}</p>
+      <p class="text-lg text-gold">Couldn't load the song</p>
+      <p class="text-sm text-cream/60">{{ store.error }}</p>
       <button
         type="button"
-        class="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-emerald-500"
+        class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
         @click="load"
       >
         Retry
@@ -67,18 +67,18 @@ function onPause(): void {}
     <template v-else-if="store.song">
       <ScoreViewport :file-path="store.song.filePath" />
 
-      <footer class="flex items-center justify-between gap-4 border-t border-slate-800 px-6 py-3">
+      <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
         <PlayerControls @stop="onStop" @play="onPlay" @pause="onPause" />
 
         <div class="min-w-0 text-right">
-          <p class="truncate text-sm font-medium text-slate-200">{{ store.song.title }}</p>
-          <p class="truncate text-xs text-slate-500">{{ store.song.author }}</p>
+          <p class="truncate text-sm font-medium text-gold">{{ store.song.title }}</p>
+          <p class="truncate text-xs text-cream/70">{{ store.song.author }}</p>
         </div>
       </footer>
     </template>
 
     <!-- Initial state before first load resolves (nothing else to show) -->
-    <div v-else class="flex flex-1 items-center justify-center text-slate-600">
+    <div v-else class="flex flex-1 items-center justify-center text-cream/40">
       No song selected
     </div>
   </div>
