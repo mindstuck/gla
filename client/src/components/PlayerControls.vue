@@ -1,24 +1,39 @@
 <script setup lang="ts">
+import type { PlaybackState } from '../types/playback'
+
 /**
  * Playback controls for the song page footer.
  *
- * Dumb presentational component: it only emits intents. Binding to the actual
- * player (alphaTab, post-Step 6) happens in the parent, so the buttons stay
- * untouched when the player API arrives.
+ * Dumb presentational component: it only emits intents and mirrors the
+ * player's current state onto the matching button (gold fill). The alphaTab
+ * player itself is bound in SongView via ScoreViewport's exposed controls.
  */
+defineProps<{
+  state: PlaybackState
+}>()
+
 defineEmits<{
   stop: []
   play: []
   pause: []
 }>()
+
+/** Gold fill marks the button matching the active player state. */
+function stateClass(active: boolean): string {
+  return active
+    ? 'bg-gold text-forest hover:bg-cream'
+    : 'bg-tartan text-cream hover:bg-forest hover:text-gold'
+}
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2" role="group" aria-label="Playback controls">
     <button
       type="button"
       aria-label="Stop"
-      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      title="Stop"
+      :aria-pressed="state === 'stopped'"
+      :class="['rounded-full p-2 transition', stateClass(state === 'stopped')]"
       @click="$emit('stop')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -29,7 +44,9 @@ defineEmits<{
     <button
       type="button"
       aria-label="Play"
-      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      title="Play"
+      :aria-pressed="state === 'playing'"
+      :class="['rounded-full p-2 transition', stateClass(state === 'playing')]"
       @click="$emit('play')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -40,7 +57,9 @@ defineEmits<{
     <button
       type="button"
       aria-label="Pause"
-      class="rounded-full bg-tartan p-2 text-cream transition hover:bg-forest hover:text-gold"
+      title="Pause"
+      :aria-pressed="state === 'paused'"
+      :class="['rounded-full p-2 transition', stateClass(state === 'paused')]"
       @click="$emit('pause')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">

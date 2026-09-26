@@ -17,9 +17,13 @@
            alphaTab re-renders to fit; the reserved gutter (stable) prevents even a
            transient overflow while the vertical scrollbar settles.
            Cream "paper": alphaTab draws notation on a transparent surface. -->
-      <div class="min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]">
+      <div
+        ref="scroller"
+        class="min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
+      >
         <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
-        <div ref="host" /></div>
+        <div ref="host" />
+      </div>
 
       <p v-if="phase === 'ready'" class="px-3 pb-2 pt-1 text-center font-mono text-[10px] text-cream/40">
         {{ filePath }}
@@ -56,8 +60,9 @@
 </template>
 
 <script setup lang="ts">
-import { AlphaTabApi, FileLoadError, PlayerMode } from '@coderline/alphatab'
+import { AlphaTabApi, FileLoadError, PlayerMode, synth } from '@coderline/alphatab'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { PlaybackState } from '../types/playback'
 
 const props = defineProps<{
   /** Backend song id — the score file is fetched from /api/songs/{id}/file */
@@ -66,16 +71,34 @@ const props = defineProps<{
   filePath?: string
 }>()
 
+const emit = defineEmits<{
+  /** Current playback state, mirrored up so the footer controls can reflect it. */
+  playerState: [state: PlaybackState]
+}>()
+
 type Phase = 'loading' | 'ready' | 'error'
 
 const phase = ref<Phase>('loading')
 const errorMessage = ref('')
 
 const host = ref<HTMLDivElement | null>(null)
+/** Scroll container around the alphaTab host — also alphaTab's cursor scroll element. */
+const scroller = ref<HTMLDivElement | null>(null)
 
 let api: AlphaTabApi | null = null
 /** Event unsubscriptions returned by alphaTab's `.on(...)` */
 let unsubscribers: Array<() => void> = []
+
+/** Last state pushed to the parent — events are emitted only on change. */
+let playbackState: PlaybackState = 'stopped'
+
+function setPlaybackState(state: PlaybackState): void {
+  if (state === playbackState) {
+    return
+  }
+  playbackState = state
+  emit('playerState', state)
+}
 
 function teardown(): void {
   for (const off of unsubscribers) {
@@ -100,14 +123,17 @@ function init(): void {
   teardown()
   errorMessage.value = ''
   phase.value = 'loading'
+  setPlaybackState('stopped')
 
   const element = host.value
-  if (!element || !props.filePath) {
+  const scrollElement = scroller.value
+  if (!element || !scrollElement || !props.filePath) {
     return
   }
 
-  // Fresh element content for the new instance.
+  // Fresh element content for the new instance, view back at the top.
   element.replaceChildren()
+  scrollElement.scrollTop = 0
 
   const alphaTabApi = new AlphaTabApi(element, {
     core: {
@@ -121,6 +147,9 @@ function init(): void {
       playerMode: PlayerMode.EnabledSynthesizer,
       soundFont: '/soundfont/sonivox.sf2',
       enableCursor: true,
+      // The document itself never scrolls (h-dvh layout), so cursor
+      // auto-scrolling must target the score panel's own scroller.
+      scrollElement,
     },
   })
 
@@ -132,11 +161,42 @@ function init(): void {
       errorMessage.value = describeError(e)
       phase.value = 'error'
     }),
+    alphaTabApi.playerStateChanged.on((args) => {
+      if (args.stopped) {
+        setPlaybackState('stopped')
+      } else {
+        setPlaybackState(args.state === synth.PlayerState.Playing ? 'playing' : 'paused')
+      }
+    }),
+    alphaTabApi.playerFinished.on(() => setPlaybackState('stopped')),
   )
 
   api = alphaTabApi
   alphaTabApi.load(`/api/songs/${props.songId}/file`)
 }
+
+/** Controls exposed to SongView, which owns the footer buttons. */
+function play(): void {
+  if (phase.value === 'ready' && playbackState !== 'playing') {
+    api?.play()
+  }
+}
+
+function pause(): void {
+  if (playbackState === 'playing') {
+    api?.pause()
+  }
+}
+
+function stop(): void {
+  api?.stop()
+  // Stop means back to the beginning — reset the panel view with the cursor.
+  if (scroller.value) {
+    scroller.value.scrollTop = 0
+  }
+}
+
+defineExpose({ play, pause, stop })
 
 onMounted(init)
 onBeforeUnmount(teardown)

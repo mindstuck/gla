@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PlayerControls from '../components/PlayerControls.vue'
 import ScoreViewport from '../components/ScoreViewport.vue'
 import { useSongStore } from '../stores/song'
+import type { PlaybackState } from '../types/playback'
 
 const route = useRoute()
 const store = useSongStore()
@@ -20,11 +21,20 @@ function load(): void {
 onMounted(load)
 watch(() => route.params.id, load)
 
-// Intents only: binding to the alphaTab player happens in the post-Step 6
-// integration, so these handlers are replaced without touching the template.
-function onStop(): void {}
-function onPlay(): void {}
-function onPause(): void {}
+// Player binding: ScoreViewport owns the alphaTab instance and exposes the
+// transport controls; its state events keep the footer buttons in sync.
+const score = ref<InstanceType<typeof ScoreViewport> | null>(null)
+const playerState = ref<PlaybackState>('stopped')
+
+function onStop(): void {
+  score.value?.stop()
+}
+function onPlay(): void {
+  score.value?.play()
+}
+function onPause(): void {
+  score.value?.pause()
+}
 </script>
 
 <template>
@@ -65,10 +75,15 @@ function onPause(): void {}
 
     <!-- Ready -->
     <template v-else-if="store.song">
-      <ScoreViewport :song-id="store.song.id" :file-path="store.song.filePath" />
+      <ScoreViewport
+        ref="score"
+        :song-id="store.song.id"
+        :file-path="store.song.filePath"
+        @player-state="playerState = $event"
+      />
 
       <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
-        <PlayerControls @stop="onStop" @play="onPlay" @pause="onPause" />
+        <PlayerControls :state="playerState" @stop="onStop" @play="onPlay" @pause="onPause" />
 
         <div class="min-w-0 text-right">
           <p class="truncate text-sm font-medium text-gold">{{ store.song.title }}</p>

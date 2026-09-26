@@ -4,8 +4,9 @@ Learning guitar songs should be fun and structured. Upload a tab/score file and 
 difficulty analysis per fragment, detected techniques, a recommended learning order
 and a focused practice mode.
 
-This repository currently contains **Phase v1**: the song page with its backend
-infrastructure. See [`docs/SONG_PAGE.md`](docs/SONG_PAGE.md) for the feature spec and
+This repository currently contains **Phase v1**: the song page — score rendering and
+playback via alphaTab, with its backend infrastructure. See
+[`docs/SONG_PAGE.md`](docs/SONG_PAGE.md) for the feature spec and
 [`docs/GLA.md`](docs/GLA.md) for the product vision.
 
 ## Stack
@@ -13,7 +14,7 @@ infrastructure. See [`docs/SONG_PAGE.md`](docs/SONG_PAGE.md) for the feature spe
 | Layer    | Technology |
 | -------- | ---------- |
 | Backend  | ASP.NET Core (.NET 10), EF Core, SQL Server (Docker), System.Text.Json |
-| Frontend | Vue 3, Vite, TypeScript, Tailwind CSS 4, Vue Router, Pinia |
+| Frontend | Vue 3, Vite, TypeScript, Tailwind CSS 4, Vue Router, Pinia, alphaTab |
 | Tests    | xUnit (backend, SQLite in-memory) |
 
 Details in [`docs/STACK.md`](docs/STACK.md).
@@ -45,6 +46,10 @@ npm run dev
 The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in
 development (the CORS policy is registered for direct/production access).
 
+Score files are read from `storage/` at the repo root (gitignored — drop your own
+Guitar Pro files there; the seeded *Stairway to Heaven* expects
+`storage/led-zeppelin-stairway_to_heaven.gp4`).
+
 ## Scripts
 
 ```bash
@@ -55,19 +60,20 @@ npm run type-check        # client type-check only (client/)
 
 ## API
 
-| Method | Route          | Description                                   |
-| ------ | -------------- | --------------------------------------------- |
-| GET    | `/songs`       | All songs                                     |
-| GET    | `/songs/{id}`  | One song, `404` if missing                    |
+| Method | Route              | Description                                   |
+| ------ | ------------------ | --------------------------------------------- |
+| GET    | `/songs`           | All songs                                     |
+| GET    | `/songs/{id}`      | One song, `404` if missing                    |
+| GET    | `/songs/{id}/file` | Score file bytes, `404` if missing            |
 
 Response:
 
 ```json
-{ "id": 1, "title": "Paranoid Android", "author": "Radiohead", "filePath": "/ParanoidAndroid.gp5" }
+{ "id": 1, "title": "Stairway to Heaven", "author": "Led Zeppelin", "filePath": "led-zeppelin-stairway_to_heaven.gp4" }
 ```
 
-`filePath` points to the score file's location; serving those files is not part of
-Phase v1.
+`filePath` is relative to `storage/` (forward slashes, no leading slash); the file
+endpoint streams it to the client, where alphaTab renders it in the score viewport.
 
 ## Project layout
 
@@ -88,6 +94,7 @@ Phase v1.
 │       ├── types/       API models
 │       └── views/       SongView
 ├── docs/                Product & feature specs
+├── storage/             Score files (gitignored)
 └── docker-compose.yml   SQL Server
 ```
 
@@ -95,8 +102,9 @@ Phase v1.
 
 - **Migrations**: `dotnet tool restore`, then
   `dotnet ef migrations add <Name> --project GLA --startup-project GLA`
-- **Seed data**: 3 songs are inserted by the `InitialCreate` migration
+- **Seed data**: 4 songs are inserted by the `ReSeedSongs` migration
 - **Connection string**: `GLA/appsettings.Development.json` (dev-only SA password,
   mirrored in `docker-compose.yml`)
-- **Next up**: replacing the viewport placeholder with real score rendering (alphaTab),
-  then Phase v2 (users)
+- **alphaTab assets**: Bravura fonts and the SONiVOX soundfont are copied from
+  `node_modules` into `client/public/` by the Vite plugin on dev/build (gitignored)
+- **Next up**: Phase v2 (user abstraction), see [`docs/SONG_PAGE.md`](docs/SONG_PAGE.md)
