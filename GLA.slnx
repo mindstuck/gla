@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="GLA/GLA.csproj" />
+  <Project Path="GLA.Tests/GLA.Tests.csproj" />
+</Solution>

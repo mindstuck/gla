@@ -1,0 +1,71 @@
+@import 'tailwindcss';
+
+/*
+ * GLA palette
+ */
+@theme {
+  /* Backgrounds */
+  --color-forest: #023020; /* deep forest green — page (parent) background */
+  --color-bottle: #004b2b; /* noble bottle green — secondary background (main column) */
+  --color-tartan: #0b2b26; /* tartan green — special background (rare usage) */
+
+  /* Text */
+  --color-gold: #d4af37; /* primary text */
+  --color-cream: #e6d7c3; /* secondary text */
+  --color-clay: #c36a4b; /* special text (rare usage) */
+}
+
+@layer base {
+  html {
+    /* Reserve the browser scrollbar's width on the right so page content
+       never runs underneath it (and never shifts when it appears). */
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background-color: var(--color-forest);
+  }
+
+  /* Palette-colored text selection instead of the browser default blue. */
+  ::selection {
+    background-color: var(--color-gold);
+    color: var(--color-forest);
+  }
+
+  /* Interactive elements keep the pointing hand. */
+  button:not(:disabled),
+  a[href] {
+    cursor: pointer;
+  }
+}
+
+/* Score panel scroller: thin forest thumb, transparent track so the cream
+   paper shows through instead of a grey gutter. */
+@utility score-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-forest) 55%, transparent) transparent;
+}
+
+/*
+ * alphaTab playback cursor (the package ships no CSS of its own).
+ * Palette-tuned, minimalistic:
+ *   .at-cursor-bar    wash over the bar currently being played
+ *   .at-cursor-beat   3px line at the current beat
+ *   .at-selection     playback-range highlight ("selected" bars)
+ *   .at-highlight     glyphs of the beat currently being played
+ */
+.at-cursor-bar {
+  background-color: color-mix(in srgb, var(--color-gold) 16%, transparent);
+}
+
+.at-cursor-beat {
+  background-color: var(--color-gold);
+}
+
+.at-selection > div {
+  background-color: color-mix(in srgb, var(--color-clay) 28%, transparent);
+}
+
+.at-highlight {
+  fill: color-mix(in srgb, var(--color-clay) 75%, transparent);
+}

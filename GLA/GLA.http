@@ -1,0 +1,15 @@
+@GLA_HostAddress = http://localhost:5233
+
+### List all songs
+GET {{GLA_HostAddress}}/songs
+Accept: application/json
+
+### Get song by id
+GET {{GLA_HostAddress}}/songs/1
+Accept: application/json
+
+### Get song by id (missing -> 404)
+GET {{GLA_HostAddress}}/songs/999
+Accept: application/json
+
+###
