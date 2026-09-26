@@ -43,8 +43,15 @@ npm run dev
 # → http://localhost:5173  (opens on /songs/1)
 ```
 
-The Vite dev server proxies `/api/*` to the backend, so no CORS setup is needed in
-development (the CORS policy is registered for direct/production access).
+Both dev servers bind to all interfaces, so from any device on your LAN you can
+open the app with your laptop's IP instead of `localhost` (e.g.
+`http://192.168.1.23:5173` — find the address with `ipconfig`). The Vite dev
+server proxies `/api/*` to the backend, so no CORS setup is needed in
+development (the CORS policy is registered for direct/production access) —
+except if a client hits `http://<lan-ip>:5233` directly, in which case its
+origin must be added to `Cors:AllowedOrigins` in `GLA/appsettings.Development.json`.
+If other devices cannot connect at all, allow `node` and `dotnet` through the
+Windows firewall for private networks.
 
 Score files are read from `storage/` at the repo root (gitignored — drop your own
 Guitar Pro files there; the seeded *Stairway to Heaven* expects

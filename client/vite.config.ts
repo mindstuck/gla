@@ -9,6 +9,9 @@ export default defineConfig({
   // bundled Bravura font and SONiVOX soundfont to /font and /soundfont.
   plugins: [vue(), tailwindcss(), alphaTab()],
   server: {
+    // Listen on all interfaces so the dev app is reachable from other devices
+    // on the LAN via this machine's IP (localhost keeps working).
+    host: true,
     proxy: {
       // Same-origin in development: the API client can call '/api/...' directly,
       // Vite forwards it to the ASP.NET Core backend without CORS.
