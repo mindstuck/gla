@@ -6,7 +6,7 @@ and a focused practice mode.
 
 This repository currently contains **Phase v1**: the song page — score rendering and
 playback via alphaTab, with its backend infrastructure. See
-[`docs/SONG_PAGE.md`](docs/SONG_PAGE.md) for the feature spec and
+[`docs/PHASES.md`](docs/PHASES.md) for the phase plan and
 [`docs/GLA.md`](docs/GLA.md) for the product vision.
 
 ## Stack
@@ -120,4 +120,4 @@ endpoint streams it to the client, where alphaTab renders it in the score viewpo
   middleware) — alphaTab then logs font/soundfont loading errors because the
   assets come back as `index.html`. Restart `npm run dev` once the directory
   exists (or run `npm run build` first).
-- **Next up**: Phase v2 (user abstraction), see [`docs/SONG_PAGE.md`](docs/SONG_PAGE.md)
+- **Next up**: Phase v2 (score track controls + songs list page), see [`docs/PHASES.md`](docs/PHASES.md)
