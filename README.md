@@ -114,5 +114,10 @@ endpoint streams it to the client, where alphaTab renders it in the score viewpo
 - **Connection string**: `GLA/appsettings.Development.json` (dev-only SA password,
   mirrored in `docker-compose.yml`)
 - **alphaTab assets**: Bravura fonts and the SONiVOX soundfont are copied from
-  `node_modules` into `client/public/` by the Vite plugin on dev/build (gitignored)
+  `node_modules` into `client/public/` by the Vite plugin on dev/build (gitignored).
+  On a *fresh clone* the dev server can start before `client/public/` exists
+  (the copy runs in the plugin's `buildStart`, after Vite mounted its static
+  middleware) — alphaTab then logs font/soundfont loading errors because the
+  assets come back as `index.html`. Restart `npm run dev` once the directory
+  exists (or run `npm run build` first).
 - **Next up**: Phase v2 (user abstraction), see [`docs/SONG_PAGE.md`](docs/SONG_PAGE.md)
