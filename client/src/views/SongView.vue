@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import PlayerControls from '../components/PlayerControls.vue'
 import ScoreViewport from '../components/ScoreViewport.vue'
 import { useSongStore } from '../stores/song'
-import type { PlaybackState } from '../types/playback'
 
 const route = useRoute()
 const store = useSongStore()
@@ -19,22 +17,9 @@ function load(): void {
 }
 
 onMounted(load)
-watch(() => route.params.id, load)
-
-// Player binding: ScoreViewport owns the alphaTab instance and exposes the
-// transport controls; its state events keep the footer buttons in sync.
-const score = ref<InstanceType<typeof ScoreViewport> | null>(null)
-const playerState = ref<PlaybackState>('stopped')
-
-function onStop(): void {
-  score.value?.stop()
-}
-function onPlay(): void {
-  score.value?.play()
-}
-function onPause(): void {
-  score.value?.pause()
-}
+// Watch the computed directly — a getter returning it yields the same ref
+// identity on every re-evaluation and would never trigger.
+watch(songId, load)
 </script>
 
 <template>
@@ -51,7 +36,7 @@ function onPause(): void {
     <!-- Not found (404 or malformed route id) -->
     <div v-else-if="store.notFound || !Number.isInteger(songId) || songId < 1" class="flex flex-1 flex-col items-center justify-center gap-3">
       <p class="text-lg text-gold">Song not found</p>
-      <p class="text-sm text-cream/60">No song with id {{ route.params.id }}.</p>
+      <p class="text-sm text-cream/60">No song with id {{ songId }}.</p>
       <router-link
         to="/"
         class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
@@ -73,23 +58,9 @@ function onPause(): void {
       </button>
     </div>
 
-    <!-- Ready -->
+    <!-- Ready — ScoreViewport renders the score, its controls and the song identity. -->
     <template v-else-if="store.song">
-      <ScoreViewport
-        ref="score"
-        :song-id="store.song.id"
-        :file-path="store.song.filePath"
-        @player-state="playerState = $event"
-      />
-
-      <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
-        <PlayerControls :state="playerState" @stop="onStop" @play="onPlay" @pause="onPause" />
-
-        <div class="min-w-0 text-right">
-          <p class="truncate text-sm font-medium text-gold">{{ store.song.title }}</p>
-          <p class="truncate text-xs text-cream/70">{{ store.song.author }}</p>
-        </div>
-      </footer>
+      <ScoreViewport :song="store.song" />
     </template>
 
     <!-- Initial state before first load resolves (nothing else to show) -->

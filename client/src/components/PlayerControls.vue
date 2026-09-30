@@ -7,8 +7,8 @@ import type { PlaybackState } from '../types/playback'
  * Dumb presentational component: it only emits intents and mirrors the
  * player's current state onto the buttons (gold fill on the active one).
  * Play and Pause share a single toggle button — icon, label and emitted
- * intent follow the current state. Binding happens in SongView via
- * ScoreViewport's exposed controls.
+ * intent follow the current state. Rendered and handled by ScoreViewport,
+ * which owns the player.
  */
 const props = defineProps<{
   state: PlaybackState

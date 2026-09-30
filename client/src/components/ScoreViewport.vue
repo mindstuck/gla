@@ -1,62 +1,74 @@
 <template>
-  <div
-    class="relative m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-dashed border-gold/70 bg-tartan"
-  >
-    <!-- Placeholder when the song has no score file configured -->
-    <div v-if="!filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-      <p class="text-gold">Score viewport — notes &amp; tabs render here</p>
-      <p class="text-xs text-cream/60">This song has no score file yet</p>
+  <div class="flex min-h-0 flex-1 flex-col">
+    <div
+      class="relative m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-dashed border-gold/70 bg-tartan"
+    >
+      <!-- Placeholder when the song has no score file configured -->
+      <div v-if="!song.filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+        <p class="text-gold">Score viewport — notes &amp; tabs render here</p>
+        <p class="text-xs text-cream/60">This song has no score file yet</p>
+      </div>
+
+      <template v-else>
+        <!-- The scroller wraps alphaTab's container instead of being it: alphaTab
+             measures its container's offsetWidth (border box), which a flex-stretched
+             scroll container never shrinks when its own scrollbar appears — leaving a
+             permanent ~15px horizontal overflow. As an auto-width block inside the
+             scroller, the container's offsetWidth tracks the available width and
+             alphaTab re-renders to fit; the reserved gutter (stable) prevents even a
+             transient overflow while the vertical scrollbar settles.
+             Cream "paper": alphaTab draws notation on a transparent surface. -->
+        <div
+          ref="scroller"
+          class="score-scrollbar min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
+        >
+          <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
+          <div ref="host" />
+        </div>
+
+        <!-- Continues the score's cream "paper" below the scroller. -->
+        <p v-if="phase === 'ready'" class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60">
+          {{ song.filePath }}
+        </p>
+
+        <!-- Loading -->
+        <div
+          v-if="phase === 'loading'"
+          class="absolute inset-0 z-10 flex items-center justify-center bg-tartan/90"
+          role="status"
+        >
+          <span class="animate-pulse text-cream/60">Loading score…</span>
+        </div>
+
+        <!-- Error -->
+        <div
+          v-else-if="phase === 'error'"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-tartan/95 p-6 text-center"
+          role="alert"
+        >
+          <p class="text-lg text-clay">Couldn't load the score</p>
+          <p class="text-sm text-cream/60">{{ errorMessage }}</p>
+          <p class="font-mono text-xs text-cream/40">{{ song.filePath }}</p>
+          <button
+            type="button"
+            class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
+            @click="init"
+          >
+            Retry
+          </button>
+        </div>
+      </template>
     </div>
 
-    <template v-else>
-      <!-- The scroller wraps alphaTab's container instead of being it: alphaTab
-           measures its container's offsetWidth (border box), which a flex-stretched
-           scroll container never shrinks when its own scrollbar appears — leaving a
-           permanent ~15px horizontal overflow. As an auto-width block inside the
-           scroller, the container's offsetWidth tracks the available width and
-           alphaTab re-renders to fit; the reserved gutter (stable) prevents even a
-           transient overflow while the vertical scrollbar settles.
-           Cream "paper": alphaTab draws notation on a transparent surface. -->
-      <div
-        ref="scroller"
-        class="score-scrollbar min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
-      >
-        <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
-        <div ref="host" />
-      </div>
+    <!-- Footer: transport controls and song identity — this component owns both. -->
+    <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
+      <PlayerControls :state="playbackState" @stop="stop" @play="play" @pause="pause" />
 
-      <!-- Continues the score's cream "paper" below the scroller. -->
-      <p v-if="phase === 'ready'" class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60">
-        {{ filePath }}
-      </p>
-
-      <!-- Loading -->
-      <div
-        v-if="phase === 'loading'"
-        class="absolute inset-0 z-10 flex items-center justify-center bg-tartan/90"
-        role="status"
-      >
-        <span class="animate-pulse text-cream/60">Loading score…</span>
+      <div class="min-w-0 text-right">
+        <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
+        <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
       </div>
-
-      <!-- Error -->
-      <div
-        v-else-if="phase === 'error'"
-        class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-tartan/95 p-6 text-center"
-        role="alert"
-      >
-        <p class="text-lg text-clay">Couldn't load the score</p>
-        <p class="text-sm text-cream/60">{{ errorMessage }}</p>
-        <p class="font-mono text-xs text-cream/40">{{ filePath }}</p>
-        <button
-          type="button"
-          class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
-          @click="init"
-        >
-          Retry
-        </button>
-      </div>
-    </template>
+    </footer>
   </div>
 </template>
 
@@ -64,17 +76,12 @@
 import { AlphaTabApi, FileLoadError, PlayerMode, synth } from '@coderline/alphatab'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlaybackState } from '../types/playback'
+import type { Song } from '../types/song'
+import PlayerControls from './PlayerControls.vue'
 
 const props = defineProps<{
-  /** Backend song id — the score file is fetched from /api/songs/{id}/file */
-  songId: number
-  /** Song file location (relative to the files root), shown while the score loads */
-  filePath?: string
-}>()
-
-const emit = defineEmits<{
-  /** Current playback state, mirrored up so the footer controls can reflect it. */
-  playerState: [state: PlaybackState]
+  /** The song to render — its id fetches the score file, the rest identify it in the footer. */
+  song: Song
 }>()
 
 type Phase = 'loading' | 'ready' | 'error'
@@ -90,15 +97,14 @@ let api: AlphaTabApi | null = null
 /** Event unsubscriptions returned by alphaTab's `.on(...)` */
 let unsubscribers: Array<() => void> = []
 
-/** Last state pushed to the parent — events are emitted only on change. */
-let playbackState: PlaybackState = 'stopped'
+/** Current transport state, mirrored onto the footer controls. */
+const playbackState = ref<PlaybackState>('stopped')
 
 function setPlaybackState(state: PlaybackState): void {
-  if (state === playbackState) {
+  if (state === playbackState.value) {
     return
   }
-  playbackState = state
-  emit('playerState', state)
+  playbackState.value = state
 }
 
 function teardown(): void {
@@ -128,7 +134,7 @@ function init(): void {
 
   const element = host.value
   const scrollElement = scroller.value
-  if (!element || !scrollElement || !props.filePath) {
+  if (!element || !scrollElement || !props.song.filePath) {
     return
   }
 
@@ -173,18 +179,18 @@ function init(): void {
   )
 
   api = alphaTabApi
-  alphaTabApi.load(`/api/songs/${props.songId}/file`)
+  alphaTabApi.load(`/api/songs/${props.song.id}/file`)
 }
 
-/** Controls exposed to SongView, which owns the footer buttons. */
+/** Transport controls, wired to the footer's PlayerControls intents. */
 function play(): void {
-  if (phase.value === 'ready' && playbackState !== 'playing') {
+  if (phase.value === 'ready' && playbackState.value !== 'playing') {
     api?.play()
   }
 }
 
 function pause(): void {
-  if (playbackState === 'playing') {
+  if (playbackState.value === 'playing') {
     api?.pause()
   }
 }
@@ -197,12 +203,10 @@ function stop(): void {
   }
 }
 
-defineExpose({ play, pause, stop })
-
 onMounted(init)
 onBeforeUnmount(teardown)
 watch(
-  () => props.songId,
+  () => props.song.id,
   () => init(),
 )
 </script>
