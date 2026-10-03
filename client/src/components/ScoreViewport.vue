@@ -3,9 +3,16 @@
     <!-- Score panel: full-bleed by default — no margin, padding or border, so
          the score reaches every screen edge. The chrome bars overlay it
          instead of taking a slice of it, and only the roomy desktop layout
-         floats it in a dashed frame (`desktop:` adds what mobile omits). -->
+         floats it in a dashed frame (`desktop:` adds what mobile omits).
+
+         `isolate` fixes the cursor overlap: alphaTab renders its playback
+         cursor and bar highlight in a `.at-cursors` layer with z-index 1000,
+         which would otherwise paint straight over the chrome bars (z-30/z-40)
+         as they float across the score. A stacking context of its own keeps
+         those z-indexes contained, so the bars always cover the cursor — and
+         their glass blurs it instead. -->
     <div
-      class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-tartan desktop:m-4 desktop:rounded-xl desktop:border-4 desktop:border-dashed desktop:border-gold/70"
+      class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-tartan desktop:m-4 desktop:rounded-xl desktop:border-4 desktop:border-dashed desktop:border-gold/70"
     >
       <!-- Placeholder when the song has no score file configured -->
       <div v-if="!song.filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -77,10 +84,11 @@
          it — the footer or the open tray — up opens it onto the track
          controls, down closes it again.
          Desktop: a plain block — the tray inside positions itself over the
-         score's top-left corner and the footer keeps its in-flow row. -->
+         score's top-left corner and the footer keeps its in-flow row, so the
+         overflow clip that rounds the card is mobile-only. -->
     <div
       data-chrome
-      class="safe-area-bottom transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-0 mobile:bottom-0 mobile:z-30 mobile:flex mobile:flex-col mobile:bg-bottle"
+      class="liquid-glass mobile:liquid-frost rounded-xl safe-area-bottom transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:bottom-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
       :class="{ 'mobile:translate-y-full': !chrome.visible }"
       :inert="!chrome.visible"
       @touchstart.passive="onSwipeStart"
@@ -96,6 +104,7 @@
         id="track-tray"
         ref="tray"
         class="max-h-[var(--tray-h)] overflow-x-hidden overflow-y-auto transition-[max-height] duration-300 ease-out desktop:max-h-none desktop:overflow-visible"
+        :class="{ 'border-b border-cream/10': chrome.expanded }"
         :style="{ '--tray-h': `${trayHeight}px` }"
         :inert="!isDesktop && !chrome.expanded"
       >
@@ -113,10 +122,9 @@
            child claims its own column: on desktop the indicator is display
            none, and auto-placement would otherwise slide the title into the
            empty middle track instead of the right-hand one. (The swipe itself
-           is bound on the whole bottom chrome, above.) -->
-      <footer
-        class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t border-cream/10 px-6 py-3"
-      >
+           is bound on the whole bottom chrome, above; the hairline above this
+           row belongs to the tray, and only shows when it is open.) -->
+      <footer class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
         <PlayerControls class="col-start-1" :state="playbackState" @stop="stop" @play="play" @pause="pause" />
 
         <!-- Swipe indicator: up opens the track controls, down closes them.

@@ -4,17 +4,19 @@
        and the footer stays pinned instead of the document growing.
        overflow-hidden clips the chrome while it slides off the edges. -->
   <div class="flex h-dvh flex-col overflow-hidden bg-forest text-gold">
-    <!-- Mobile: the header overlays the score's top edge (absolute, so hiding
-         it never resizes the score) and covers the notch area, which
-         .safe-area-top keeps clear of its content. Desktop keeps it in flow. -->
+    <!-- Mobile: the header floats over the score's top edge (absolute, so
+         hiding it never resizes the score) and covers the notch area, which
+         .safe-area-top keeps clear of its content. Desktop keeps it in flow,
+         floating on the same margin. The wordmark is centred and set in
+         Rubik Broken Fax (font-fax). -->
     <header
       data-chrome
-      class="border-b border-gold/15 safe-area-top transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-0 mobile:top-0 mobile:z-40 mobile:bg-forest"
+      class="liquid-glass mobile:liquid-frost rounded-xl safe-area-top transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:top-3 mobile:z-40 desktop:m-3"
       :class="{ 'mobile:-translate-y-full': !chrome.visible }"
       :inert="!chrome.visible"
     >
-      <div class="px-6 py-4">
-        <h1 class="text-xl font-semibold tracking-wide">GLA</h1>
+      <div class="px-6 py-4 text-center">
+        <h1 class="font-fax text-xl tracking-wide">GLA</h1>
       </div>
     </header>
 
