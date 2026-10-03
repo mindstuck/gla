@@ -8,7 +8,7 @@ import type { TrackControl } from '../types/track'
  * panel's bottom (mobile).
  *
  * Clicking a circle mutes/unmutes its track. On desktop the per-track popup
- * (volume, solo, isolate) opens after a ~400ms hover dwell, stays up for a
+ * (volume, solo, isolate) opens after a ~300ms hover dwell, stays up for a
  * 500ms grace after the pointer leaves, and opens instantly on keyboard
  * focus; mobile shows the same controls inline next to each button — same
  * buttons, same states, only placement differs.
@@ -37,7 +37,7 @@ let openTimer: ReturnType<typeof setTimeout> | undefined
 let closeTimer: ReturnType<typeof setTimeout> | undefined
 
 /** Dwell before the popup opens so passing over the buttons never flashes it. */
-const OPEN_DELAY_MS = 400
+const OPEN_DELAY_MS = 300
 /** Grace after leaving, so a small slip off the button doesn't kill the popup. */
 const CLOSE_DELAY_MS = 500
 
@@ -370,8 +370,8 @@ function popupClass(track: TrackControl): string {
           type="button"
           :class="smallButtonClass(isIsolated(track))"
           :aria-pressed="isIsolated(track)"
-          :aria-label="`Show only ${track.name}`"
-          :title="`Show only ${track.name}`"
+          :aria-label="`Show ${track.name}`"
+          :title="`Show ${track.name}`"
           @click="emit('open', track.index)"
         >
           <svg
