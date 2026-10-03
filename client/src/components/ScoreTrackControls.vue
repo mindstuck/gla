@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDesktopViewport } from '../composables/useDesktopViewport'
 import type { TrackControl } from '../types/track'
 
 /**
@@ -16,8 +15,10 @@ import type { TrackControl } from '../types/track'
  * buttons, same states, only placement differs.
  *
  * Because vertical space is scarce on phones (especially landscape), the
- * mobile tray folds down to a slim strip: tap the strip or swipe down/up
- * over the controls to collapse/expand. Desktop ignores the fold entirely.
+ * mobile tray never sits on the score: it lives inside the bottom chrome and
+ * only shows when the footer is swiped open (see ScoreViewport, which owns
+ * that gesture) — while it is closed it is inert, so it is out of the tab
+ * order too.
  *
  * Presentational only: ScoreViewport owns the alphaTab API and the track
  * state this renders — intents come back as events.
@@ -42,48 +43,6 @@ let closeTimer: ReturnType<typeof setTimeout> | undefined
 const OPEN_DELAY_MS = 300
 /** Grace after leaving, so a small slip off the button doesn't kill the popup. */
 const CLOSE_DELAY_MS = 500
-
-/**
- * Desktop = wide *and* tall; short viewports (landscape phones, small
- * split windows) keep the mobile tray even when they are wide. The query
- * lives in the shared composable, in sync with the `desktop` variant.
- */
-const isDesktop = useDesktopViewport()
-
-/** Mobile only: the tray collapses onto its strip unless the user opens it. */
-const folded = ref(true)
-/** Vertical travel (px) before a touch counts as a fold/unfold swipe. */
-const SWIPE_THRESHOLD_PX = 44
-let touchStartY: number | null = null
-
-function setFolded(next: boolean): void {
-  folded.value = next
-  // Collapsing must not leave a popup open behind the hidden tray.
-  if (next) closeNow()
-}
-
-function toggleFold(): void {
-  setFolded(!folded.value)
-}
-
-function onTouchStart(event: TouchEvent): void {
-  touchStartY = event.touches[0]?.clientY ?? null
-}
-
-function onTouchEnd(event: TouchEvent): void {
-  const startY = touchStartY
-  touchStartY = null
-  if (startY === null || isDesktop.value) return
-  const endY = event.changedTouches[0]?.clientY ?? startY
-  const deltaY = endY - startY
-  if (Math.abs(deltaY) < SWIPE_THRESHOLD_PX) return
-  // Swiping down folds the tray away; swiping up raises it again.
-  if (deltaY > 0) {
-    if (!folded.value) setFolded(true)
-  } else if (folded.value) {
-    setFolded(false)
-  }
-}
 
 function clearOpenTimer(): void {
   if (openTimer !== undefined) {
@@ -217,39 +176,10 @@ function popupClass(track: TrackControl): string {
     role="group"
     aria-label="Track controls"
     class="flex flex-col items-start gap-2 px-3 pb-2 pt-2 desktop:absolute desktop:left-6 desktop:top-6 desktop:z-20 desktop:gap-1.5 desktop:p-0"
-    @touchstart.passive="onTouchStart"
-    @touchend="onTouchEnd"
   >
-    <!-- Fold/unfold handle: the mobile tray collapses onto this slim strip
-         so the score keeps its space; swiping down/up works too. -->
-    <button
-      v-show="!isDesktop"
-      type="button"
-      class="flex h-7 w-full items-center justify-center rounded-full border border-gold/40 bg-tartan text-gold transition active:opacity-70"
-      :aria-expanded="!folded"
-      :aria-label="folded ? 'Show track controls' : 'Hide track controls'"
-      :title="folded ? 'Show track controls' : 'Hide track controls'"
-      @click="toggleFold"
-    >
-      <svg
-        class="h-4 w-4 transition-transform duration-200"
-        :class="folded ? 'rotate-180' : ''"
-        viewBox="0 0 16 16"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.8"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path d="M4 6l4 4 4-4" />
-      </svg>
-    </button>
-
     <div
       v-for="track in tracks"
       :key="track.index"
-      v-show="isDesktop || !folded"
       class="group relative flex items-center gap-2"
       @mouseenter="onMouseEnter(track.index)"
       @mouseleave="onMouseLeave"

@@ -69,11 +69,13 @@
       </template>
     </div>
 
-    <!-- Bottom chrome: the track selector plus the transport controls and
-         song identity — this component owns all three.
+    <!-- Bottom chrome: the track controls, the transport row and the song
+         identity — this component owns all three.
          Mobile: one stack overlaying the score's bottom edge, slid away as a
          unit with a transform (the score underneath never resizes) and padded
-         clear of the home indicator by .safe-area-bottom.
+         clear of the home indicator by .safe-area-bottom. Swiping anywhere on
+         it — the footer or the open tray — up opens it onto the track
+         controls, down closes it again.
          Desktop: a plain block — the tray inside positions itself over the
          score's top-left corner and the footer keeps its in-flow row. -->
     <div
@@ -81,21 +83,70 @@
       class="safe-area-bottom transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-0 mobile:bottom-0 mobile:z-30 mobile:flex mobile:flex-col mobile:bg-bottle"
       :class="{ 'mobile:translate-y-full': !chrome.visible }"
       :inert="!chrome.visible"
+      @touchstart.passive="onSwipeStart"
+      @touchend="onSwipeEnd"
     >
       <!-- Track selector: absolute column over the score's top-left corner
-           on desktop, in-flow tray above the transport row on mobile. -->
-      <ScoreTrackControls
-        :tracks="trackControls"
-        @mute="onToggleMute"
-        @solo="onToggleSolo"
-        @volume="onSetVolume"
-        @open="onToggleRender"
-      />
+           on desktop, in-flow tray above the transport row on mobile.
+           The wrapper is what the footer's expansion grows (0 -> the tray's
+           content height), so the footer stays glued to the bottom edge and
+           the score underneath never resizes; it is inert while closed so
+           the hidden buttons stay out of the tab order. -->
+      <div
+        id="track-tray"
+        ref="tray"
+        class="max-h-[var(--tray-h)] overflow-x-hidden overflow-y-auto transition-[max-height] duration-300 ease-out desktop:max-h-none desktop:overflow-visible"
+        :style="{ '--tray-h': `${trayHeight}px` }"
+        :inert="!isDesktop && !chrome.expanded"
+      >
+        <ScoreTrackControls
+          :tracks="trackControls"
+          @mute="onToggleMute"
+          @solo="onToggleSolo"
+          @volume="onSetVolume"
+          @open="onToggleRender"
+        />
+      </div>
 
-      <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
-        <PlayerControls :state="playbackState" @stop="stop" @play="play" @pause="pause" />
+      <!-- Three columns so the swipe indicator sits dead centre without ever
+           colliding with the transport buttons or the (truncated) title. Each
+           child claims its own column: on desktop the indicator is display
+           none, and auto-placement would otherwise slide the title into the
+           empty middle track instead of the right-hand one. (The swipe itself
+           is bound on the whole bottom chrome, above.) -->
+      <footer
+        class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 border-t border-cream/10 px-6 py-3"
+      >
+        <PlayerControls class="col-start-1" :state="playbackState" @stop="stop" @play="play" @pause="pause" />
 
-        <div class="min-w-0 text-right">
+        <!-- Swipe indicator: up opens the track controls, down closes them.
+             Also a plain button, so the gesture is not the only way in —
+             keyboard and mouse users get one too. -->
+        <button
+          type="button"
+          class="col-start-2 hidden rounded-full p-2 text-gold/70 transition hover:text-gold active:opacity-70 mobile:block"
+          aria-controls="track-tray"
+          :aria-expanded="chrome.expanded"
+          :aria-label="chrome.expanded ? 'Hide track controls' : 'Show track controls'"
+          :title="chrome.expanded ? 'Swipe down to hide the track controls' : 'Swipe up to show the track controls'"
+          @click="toggleTrackTray"
+        >
+          <svg
+            class="h-4 w-4 transition-transform duration-300"
+            :class="chrome.expanded ? 'rotate-180' : ''"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 10l4-4 4 4" />
+          </svg>
+        </button>
+
+        <div class="col-start-3 min-w-0 text-right">
           <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
           <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
         </div>
@@ -111,6 +162,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlaybackState } from '../types/playback'
 import type { Song } from '../types/song'
 import type { TrackControl, TrackKind } from '../types/track'
+import { useDesktopViewport } from '../composables/useDesktopViewport'
 import { useChromeStore } from '../stores/chrome'
 import PlayerControls from './PlayerControls.vue'
 import ScoreTrackControls from './ScoreTrackControls.vue'
@@ -122,6 +174,9 @@ const props = defineProps<{
 
 /** Overlay visibility of the bottom chrome (and the header it rides with). */
 const chrome = useChromeStore()
+
+/** Expanding the footer onto the track controls is a mobile gesture. */
+const isDesktop = useDesktopViewport()
 
 type Phase = 'loading' | 'ready' | 'error'
 
@@ -369,8 +424,91 @@ function onToggleRender(index: number): void {
   }
 }
 
-onMounted(init)
-onBeforeUnmount(teardown)
+/**
+ * Expanding footer (mobile)
+ *
+ * The track controls sit in a wrapper between the score and the footer that
+ * grows from 0 to their content height when the footer is swiped open, so the
+ * footer stays pinned to the bottom edge and the score itself never resizes.
+ */
+
+/** Wrapper around ScoreTrackControls that the expansion grows. */
+const tray = ref<HTMLElement | null>(null)
+/** Its animated height: 0 while closed, the tray's content height while open. */
+const trayHeight = ref(0)
+/** Vertical travel (px), and the horizontal slack it must beat, to count as a swipe. */
+const FOOTER_SWIPE_PX = 40
+/** Headroom above the open tray: the header plus a readable strip of score. */
+const TRAY_TOP_RESERVE = 160
+/** Even a tiny viewport keeps the tray tall enough for a couple of rows. */
+const TRAY_MIN_HEIGHT = 120
+let swipeStartY: number | null = null
+let swipeStartX = 0
+
+/** Points the height transition at what the tray actually holds. */
+function syncTrayHeight(): void {
+  if (!chrome.expanded || !tray.value) {
+    trayHeight.value = 0
+    return
+  }
+  // scrollHeight reports the full content even while the wrapper is clipped
+  // to 0, so this is exactly what the transition animates towards. The cap
+  // only bites when a long track list would otherwise swallow the whole
+  // score — the wrapper scrolls then, so every control stays reachable.
+  const room = Math.max(TRAY_MIN_HEIGHT, window.innerHeight - TRAY_TOP_RESERVE)
+  trayHeight.value = Math.min(tray.value.scrollHeight, room)
+}
+
+/** The arrow in the middle of the footer. */
+function toggleTrackTray(): void {
+  if (chrome.expanded) {
+    chrome.collapse()
+  } else {
+    chrome.expand()
+  }
+}
+
+function onSwipeStart(event: TouchEvent): void {
+  const touch = event.touches[0]
+  swipeStartY = touch ? touch.clientY : null
+  swipeStartX = touch ? touch.clientX : 0
+}
+
+/** Swipe up on the bottom chrome (footer or the open tray) opens the track
+ *  controls, down closes them. */
+function onSwipeEnd(event: TouchEvent): void {
+  const startY = swipeStartY
+  swipeStartY = null
+  const touch = event.changedTouches[0]
+  if (startY === null || !touch || isDesktop.value) return
+  const deltaY = touch.clientY - startY
+  const deltaX = touch.clientX - swipeStartX
+  // Vertical travel only: a sideways drag over the controls is not a swipe.
+  if (Math.abs(deltaY) < FOOTER_SWIPE_PX || Math.abs(deltaY) < Math.abs(deltaX)) return
+  // Consumed, so the browser doesn't turn the release into a click on
+  // whichever control the finger happened to end over.
+  event.preventDefault()
+  if (deltaY < 0) {
+    chrome.expand()
+  } else {
+    chrome.collapse()
+  }
+}
+
+// The wrapper follows what it holds: the expansion itself, and the track list
+// appearing or changing underneath it while it is open. Runs before the DOM
+// update, so the measurement still sees the collapsed height.
+watch([() => chrome.expanded, () => trackControls.value.length], syncTrayHeight)
+
+onMounted(() => {
+  // The cap depends on the viewport, so a resize re-measures an open tray.
+  window.addEventListener('resize', syncTrayHeight)
+  init()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncTrayHeight)
+  teardown()
+})
 watch(
   () => props.song.id,
   () => init(),
