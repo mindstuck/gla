@@ -15,6 +15,14 @@
   --color-clay: #c36a4b; /* special text (rare usage) */
 }
 
+/*
+ * "Desktop" layout: the viewport is roomy enough for the floating track
+ * column — wide AND tall. Landscape phones and other short viewports keep
+ * the compact bottom tray even when they are wide. Keep in sync with
+ * DESKTOP_MEDIA in ScoreTrackControls.vue.
+ */
+@custom-variant desktop (@media (min-width: 768px) and (min-height: 600px));
+
 @layer base {
   html {
     /* Reserve the browser scrollbar's width on the right so page content

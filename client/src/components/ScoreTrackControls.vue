@@ -1,17 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { TrackControl } from '../types/track'
 
 /**
  * Track selector for the score: a column of instrument buttons over the
- * score's top-left corner (desktop) or a row of them at the panel's
- * bottom (mobile).
+ * score's top-left corner (desktop) or a collapsible tray of them at the
+ * panel's bottom (mobile).
  *
  * Clicking a circle mutes/unmutes its track. On desktop the per-track popup
  * (volume, solo, isolate) opens after a ~400ms hover dwell, stays up for a
  * 500ms grace after the pointer leaves, and opens instantly on keyboard
  * focus; mobile shows the same controls inline next to each button — same
  * buttons, same states, only placement differs.
+ *
+ * Because vertical space is scarce on phones (especially landscape), the
+ * mobile tray folds down to a slim strip: tap the strip or swipe down/up
+ * over the controls to collapse/expand. Desktop ignores the fold entirely.
  *
  * Presentational only: ScoreViewport owns the alphaTab API and the track
  * state this renders — intents come back as events.
@@ -36,6 +40,56 @@ let closeTimer: ReturnType<typeof setTimeout> | undefined
 const OPEN_DELAY_MS = 400
 /** Grace after leaving, so a small slip off the button doesn't kill the popup. */
 const CLOSE_DELAY_MS = 500
+
+/**
+ * Desktop = wide *and* tall; short viewports (landscape phones, small
+ * split windows) keep the mobile tray even when they are wide.
+ * Must stay in sync with the `desktop` custom variant in style.css.
+ */
+const DESKTOP_MEDIA = '(min-width: 768px) and (min-height: 600px)'
+
+const mediaQuery = window.matchMedia(DESKTOP_MEDIA)
+const isDesktop = ref(mediaQuery.matches)
+function onViewportChange(event: MediaQueryListEvent): void {
+  isDesktop.value = event.matches
+}
+onMounted(() => mediaQuery.addEventListener('change', onViewportChange))
+onBeforeUnmount(() => mediaQuery.removeEventListener('change', onViewportChange))
+
+/** Mobile only: the tray collapses onto its strip unless the user opens it. */
+const folded = ref(true)
+/** Vertical travel (px) before a touch counts as a fold/unfold swipe. */
+const SWIPE_THRESHOLD_PX = 44
+let touchStartY: number | null = null
+
+function setFolded(next: boolean): void {
+  folded.value = next
+  // Collapsing must not leave a popup open behind the hidden tray.
+  if (next) closeNow()
+}
+
+function toggleFold(): void {
+  setFolded(!folded.value)
+}
+
+function onTouchStart(event: TouchEvent): void {
+  touchStartY = event.touches[0]?.clientY ?? null
+}
+
+function onTouchEnd(event: TouchEvent): void {
+  const startY = touchStartY
+  touchStartY = null
+  if (startY === null || isDesktop.value) return
+  const endY = event.changedTouches[0]?.clientY ?? startY
+  const deltaY = endY - startY
+  if (Math.abs(deltaY) < SWIPE_THRESHOLD_PX) return
+  // Swiping down folds the tray away; swiping up raises it again.
+  if (deltaY > 0) {
+    if (!folded.value) setFolded(true)
+  } else if (folded.value) {
+    setFolded(false)
+  }
+}
 
 function clearOpenTimer(): void {
   if (openTimer !== undefined) {
@@ -150,11 +204,11 @@ function smallButtonClass(active: boolean): string {
 /** Popup: inline on mobile, delayed floating panel on desktop. */
 function popupClass(track: TrackControl): string {
   const base =
-    'flex items-center gap-2 transition-opacity md:absolute md:left-full md:top-0 md:ml-1 md:rounded-lg md:border md:border-gold/40 md:bg-tartan md:px-2.5 md:py-1.5 md:shadow-lg'
+    'flex items-center gap-2 transition-opacity desktop:absolute desktop:left-full desktop:top-0 desktop:ml-1 desktop:rounded-lg desktop:border desktop:border-gold/40 desktop:bg-tartan desktop:px-2.5 desktop:py-1.5 desktop:shadow-lg'
   const open = openIndex.value === track.index
   return open
-    ? `${base} md:visible md:opacity-100 md:pointer-events-auto`
-    : `${base} md:invisible md:opacity-0 md:pointer-events-none`
+    ? `${base} desktop:visible desktop:opacity-100 desktop:pointer-events-auto`
+    : `${base} desktop:invisible desktop:opacity-0 desktop:pointer-events-none`
 }
 </script>
 
@@ -163,11 +217,40 @@ function popupClass(track: TrackControl): string {
     v-if="tracks.length > 0"
     role="group"
     aria-label="Track controls"
-    class="flex flex-col items-start gap-2 px-3 pb-2 pt-2 md:absolute md:left-1 md:top-1 md:z-20 md:gap-1.5 md:p-0"
+    class="flex flex-col items-start gap-2 px-3 pb-2 pt-2 desktop:absolute desktop:left-1 desktop:top-1 desktop:z-20 desktop:gap-1.5 desktop:p-0"
+    @touchstart.passive="onTouchStart"
+    @touchend="onTouchEnd"
   >
+    <!-- Fold/unfold handle: the mobile tray collapses onto this slim strip
+         so the score keeps its space; swiping down/up works too. -->
+    <button
+      v-show="!isDesktop"
+      type="button"
+      class="flex h-7 w-full items-center justify-center rounded-full border border-gold/40 bg-tartan text-gold transition active:opacity-70"
+      :aria-expanded="!folded"
+      :aria-label="folded ? 'Show track controls' : 'Hide track controls'"
+      :title="folded ? 'Show track controls' : 'Hide track controls'"
+      @click="toggleFold"
+    >
+      <svg
+        class="h-4 w-4 transition-transform duration-200"
+        :class="folded ? 'rotate-180' : ''"
+        viewBox="0 0 16 16"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M4 6l4 4 4-4" />
+      </svg>
+    </button>
+
     <div
       v-for="track in tracks"
       :key="track.index"
+      v-show="isDesktop || !folded"
       class="group relative flex items-center gap-2"
       @mouseenter="onMouseEnter(track.index)"
       @mouseleave="onMouseLeave"
@@ -257,7 +340,7 @@ function popupClass(track: TrackControl): string {
         :aria-label="`Controls for ${track.name}`"
       >
         <!-- Desktop only: the mobile row relies on the button order instead. -->
-        <span class="hidden max-w-20 truncate text-[10px] font-semibold uppercase tracking-wider text-cream/70 md:inline">
+        <span class="hidden max-w-20 truncate text-[10px] font-semibold uppercase tracking-wider text-cream/70 desktop:inline">
           {{ track.name }}
         </span>
 
