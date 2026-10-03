@@ -31,6 +31,16 @@
           {{ song.filePath }}
         </p>
 
+        <!-- Track selector: absolute column over the score's top-left corner
+             on desktop, in-flow row at the panel's bottom on mobile. -->
+        <ScoreTrackControls
+          :tracks="trackControls"
+          @mute="onToggleMute"
+          @solo="onToggleSolo"
+          @volume="onSetVolume"
+          @open="onToggleRender"
+        />
+
         <!-- Loading -->
         <div
           v-if="phase === 'loading'"
@@ -74,10 +84,13 @@
 
 <script setup lang="ts">
 import { AlphaTabApi, FileLoadError, PlayerMode, synth } from '@coderline/alphatab'
+import type { model } from '@coderline/alphatab'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlaybackState } from '../types/playback'
 import type { Song } from '../types/song'
+import type { TrackControl, TrackKind } from '../types/track'
 import PlayerControls from './PlayerControls.vue'
+import ScoreTrackControls from './ScoreTrackControls.vue'
 
 const props = defineProps<{
   /** The song to render — its id fetches the score file, the rest identify it in the footer. */
@@ -99,6 +112,15 @@ let unsubscribers: Array<() => void> = []
 
 /** Current transport state, mirrored onto the footer controls. */
 const playbackState = ref<PlaybackState>('stopped')
+
+/**
+ * Per-track control state mirrored onto ScoreTrackControls.
+ *
+ * alphaTab keeps mute/solo/volume on the synthesizer's channels (not on the
+ * model) and its Track objects are not reactive, so this array is the source
+ * of truth the UI renders; every intent is pushed back into the API.
+ */
+const trackControls = ref<TrackControl[]>([])
 
 function setPlaybackState(state: PlaybackState): void {
   if (state === playbackState.value) {
@@ -125,11 +147,78 @@ function describeError(e: Error): string {
   return e.message
 }
 
+/** Builds the reactive mirror of one score track's control state. */
+function toTrackControl(track: model.Track): TrackControl {
+  // File mute/solo flags are deliberately not consulted: a track that ships
+  // with volume 0 is the only "starts muted" case, and its slider sitting at
+  // 0 explains the silence just as well as a flag would.
+  const volume = track.playbackInfo.volume / 16
+  return {
+    index: track.index,
+    name: track.shortName || track.name || `Track ${track.index + 1}`,
+    kind: detectTrackKind(track),
+    volume,
+    muted: volume === 0,
+    solo: false,
+    rendered: true,
+  }
+}
+
+/** Icon family for a track: percussion flag first, then label, then GM program. */
+function detectTrackKind(track: model.Track): TrackKind {
+  if (track.isPercussion) {
+    return 'drums'
+  }
+  const label = `${track.name} ${track.shortName}`.toLowerCase()
+  if (/\bperc|drum/.test(label)) return 'drums'
+  if (/bass/.test(label)) return 'bass'
+  if (/gtr|guit/.test(label)) return 'guitar'
+  if (/viol|cello|viola/.test(label)) return 'violin'
+  if (/piano|keys|keyboard|organ/.test(label)) return 'piano'
+  const program = track.playbackInfo.program
+  if (program >= 32 && program <= 39) return 'bass'
+  if (program >= 24 && program <= 31) return 'guitar'
+  if (program >= 40 && program <= 47) return 'violin'
+  if (program <= 7) return 'piano'
+  return 'other'
+}
+
+/** The mirror for a track index, if the score exposed one. */
+function trackControl(index: number): TrackControl | undefined {
+  return trackControls.value.find((control) => control.index === index)
+}
+
+/** The alphaTab model track behind a mirror — score.tracks survives re-renders. */
+function scoreTrack(index: number): model.Track | undefined {
+  return api?.score?.tracks.find((track) => track.index === index)
+}
+
+/**
+ * Pushes the mirrored track state into the synthesizer.
+ *
+ * alphaTab applies the file's channel volumes itself when the player becomes
+ * ready — a handler registered in its constructor, before ours — so any
+ * slider move made during soundfont loading would otherwise be clobbered
+ * back to the file's value. Mute/solo are idempotent here.
+ */
+function applyTrackState(): void {
+  for (const control of trackControls.value) {
+    const track = scoreTrack(control.index)
+    if (!track) {
+      continue
+    }
+    api?.changeTrackMute([track], control.muted)
+    api?.changeTrackSolo([track], control.solo)
+    api?.changeTrackVolume([track], control.volume)
+  }
+}
+
 /** (Re)creates the alphaTab instance and loads the song's score file. */
 function init(): void {
   teardown()
   errorMessage.value = ''
   phase.value = 'loading'
+  trackControls.value = []
   setPlaybackState('stopped')
 
   const element = host.value
@@ -161,13 +250,16 @@ function init(): void {
   })
 
   unsubscribers.push(
-    alphaTabApi.scoreLoaded.on(() => {
+    alphaTabApi.scoreLoaded.on((score) => {
       phase.value = 'ready'
+      trackControls.value = score.tracks.map(toTrackControl)
     }),
     alphaTabApi.error.on((e) => {
       errorMessage.value = describeError(e)
       phase.value = 'error'
+      trackControls.value = []
     }),
+    alphaTabApi.playerReady.on(() => applyTrackState()),
     alphaTabApi.playerStateChanged.on((args) => {
       if (args.stopped) {
         setPlaybackState('stopped')
@@ -200,6 +292,54 @@ function stop(): void {
   // Stop means back to the beginning — reset the panel view with the cursor.
   if (scroller.value) {
     scroller.value.scrollTop = 0
+  }
+}
+
+/** Track control intents, wired to ScoreTrackControls' emits. */
+function onToggleMute(index: number): void {
+  const control = trackControl(index)
+  const track = scoreTrack(index)
+  if (!control || !track) {
+    return
+  }
+  control.muted = !control.muted
+  api?.changeTrackMute([track], control.muted)
+}
+
+function onToggleSolo(index: number): void {
+  const control = trackControl(index)
+  const track = scoreTrack(index)
+  if (!control || !track) {
+    return
+  }
+  control.solo = !control.solo
+  api?.changeTrackSolo([track], control.solo)
+}
+
+function onSetVolume(index: number, volume: number): void {
+  const control = trackControl(index)
+  const track = scoreTrack(index)
+  if (!control || !track) {
+    return
+  }
+  control.volume = volume
+  api?.changeTrackVolume([track], volume)
+}
+
+/** The open button isolates a track; pressing it again while isolated
+ *  brings the full score back. */
+function onToggleRender(index: number): void {
+  const score = api?.score
+  if (!api || !score) {
+    return
+  }
+  const isolated = api.tracks.length === 1 && api.tracks[0].index === index
+  const next = isolated
+    ? score.tracks
+    : score.tracks.filter((track) => track.index === index)
+  api.renderTracks(next)
+  for (const control of trackControls.value) {
+    control.rendered = next.some((track) => track.index === control.index)
   }
 }
 
