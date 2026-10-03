@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
+import { useDesktopViewport } from '../composables/useDesktopViewport'
 import type { TrackControl } from '../types/track'
 
 /**
  * Track selector for the score: a column of instrument buttons over the
- * score's top-left corner (desktop) or a collapsible tray of them at the
- * panel's bottom (mobile).
+ * score's top-left corner (desktop) or a collapsible tray of them above the
+ * transport row (mobile), where it rides along with the bottom chrome and
+ * hides with it.
  *
  * Clicking a circle mutes/unmutes its track. On desktop the per-track popup
  * (volume, solo, isolate) opens after a ~300ms hover dwell, stays up for a
@@ -43,18 +45,10 @@ const CLOSE_DELAY_MS = 500
 
 /**
  * Desktop = wide *and* tall; short viewports (landscape phones, small
- * split windows) keep the mobile tray even when they are wide.
- * Must stay in sync with the `desktop` custom variant in style.css.
+ * split windows) keep the mobile tray even when they are wide. The query
+ * lives in the shared composable, in sync with the `desktop` variant.
  */
-const DESKTOP_MEDIA = '(min-width: 768px) and (min-height: 600px)'
-
-const mediaQuery = window.matchMedia(DESKTOP_MEDIA)
-const isDesktop = ref(mediaQuery.matches)
-function onViewportChange(event: MediaQueryListEvent): void {
-  isDesktop.value = event.matches
-}
-onMounted(() => mediaQuery.addEventListener('change', onViewportChange))
-onBeforeUnmount(() => mediaQuery.removeEventListener('change', onViewportChange))
+const isDesktop = useDesktopViewport()
 
 /** Mobile only: the tray collapses onto its strip unless the user opens it. */
 const folded = ref(true)
@@ -213,11 +207,16 @@ function popupClass(track: TrackControl): string {
 </script>
 
 <template>
+  <!-- On desktop the column floats over the score's top-left corner. Its
+       containing block is now the ScoreViewport root (the tray moved into
+       the bottom chrome wrapper, which is static here), so the offsets
+       reproduce the old panel-relative inset: panel margin 1rem + its
+       dashed border 4px + 0.25rem = 1.5rem. -->
   <div
     v-if="tracks.length > 0"
     role="group"
     aria-label="Track controls"
-    class="flex flex-col items-start gap-2 px-3 pb-2 pt-2 desktop:absolute desktop:left-1 desktop:top-1 desktop:z-20 desktop:gap-1.5 desktop:p-0"
+    class="flex flex-col items-start gap-2 px-3 pb-2 pt-2 desktop:absolute desktop:left-6 desktop:top-6 desktop:z-20 desktop:gap-1.5 desktop:p-0"
     @touchstart.passive="onTouchStart"
     @touchend="onTouchEnd"
   >

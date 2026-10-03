@@ -1,7 +1,11 @@
 <template>
-  <div class="flex min-h-0 flex-1 flex-col">
+  <div class="relative flex min-h-0 flex-1 flex-col">
+    <!-- Score panel: full-bleed by default — no margin, padding or border, so
+         the score reaches every screen edge. The chrome bars overlay it
+         instead of taking a slice of it, and only the roomy desktop layout
+         floats it in a dashed frame (`desktop:` adds what mobile omits). -->
     <div
-      class="relative m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border-4 border-dashed border-gold/70 bg-tartan"
+      class="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-tartan desktop:m-4 desktop:rounded-xl desktop:border-4 desktop:border-dashed desktop:border-gold/70"
     >
       <!-- Placeholder when the song has no score file configured -->
       <div v-if="!song.filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
@@ -26,20 +30,15 @@
           <div ref="host" />
         </div>
 
-        <!-- Continues the score's cream "paper" below the scroller. -->
-        <p v-if="phase === 'ready'" class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60">
+        <!-- Continues the score's cream "paper" below the scroller. Hidden on
+             mobile: there the paper must run edge to edge, this line is
+             metadata rather than score (and the bottom chrome would cover it). -->
+        <p
+          v-if="phase === 'ready'"
+          class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60 mobile:hidden"
+        >
           {{ song.filePath }}
         </p>
-
-        <!-- Track selector: absolute column over the score's top-left corner
-             on desktop, in-flow row at the panel's bottom on mobile. -->
-        <ScoreTrackControls
-          :tracks="trackControls"
-          @mute="onToggleMute"
-          @solo="onToggleSolo"
-          @volume="onSetVolume"
-          @open="onToggleRender"
-        />
 
         <!-- Loading -->
         <div
@@ -70,15 +69,38 @@
       </template>
     </div>
 
-    <!-- Footer: transport controls and song identity — this component owns both. -->
-    <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
-      <PlayerControls :state="playbackState" @stop="stop" @play="play" @pause="pause" />
+    <!-- Bottom chrome: the track selector plus the transport controls and
+         song identity — this component owns all three.
+         Mobile: one stack overlaying the score's bottom edge, slid away as a
+         unit with a transform (the score underneath never resizes) and padded
+         clear of the home indicator by .safe-area-bottom.
+         Desktop: a plain block — the tray inside positions itself over the
+         score's top-left corner and the footer keeps its in-flow row. -->
+    <div
+      data-chrome
+      class="safe-area-bottom transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-0 mobile:bottom-0 mobile:z-30 mobile:flex mobile:flex-col mobile:bg-bottle"
+      :class="{ 'mobile:translate-y-full': !chrome.visible }"
+      :inert="!chrome.visible"
+    >
+      <!-- Track selector: absolute column over the score's top-left corner
+           on desktop, in-flow tray above the transport row on mobile. -->
+      <ScoreTrackControls
+        :tracks="trackControls"
+        @mute="onToggleMute"
+        @solo="onToggleSolo"
+        @volume="onSetVolume"
+        @open="onToggleRender"
+      />
 
-      <div class="min-w-0 text-right">
-        <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
-        <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
-      </div>
-    </footer>
+      <footer class="flex items-center justify-between gap-4 border-t border-cream/10 px-6 py-3">
+        <PlayerControls :state="playbackState" @stop="stop" @play="play" @pause="pause" />
+
+        <div class="min-w-0 text-right">
+          <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
+          <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
+        </div>
+      </footer>
+    </div>
   </div>
 </template>
 
@@ -89,6 +111,7 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PlaybackState } from '../types/playback'
 import type { Song } from '../types/song'
 import type { TrackControl, TrackKind } from '../types/track'
+import { useChromeStore } from '../stores/chrome'
 import PlayerControls from './PlayerControls.vue'
 import ScoreTrackControls from './ScoreTrackControls.vue'
 
@@ -96,6 +119,9 @@ const props = defineProps<{
   /** The song to render — its id fetches the score file, the rest identify it in the footer. */
   song: Song
 }>()
+
+/** Overlay visibility of the bottom chrome (and the header it rides with). */
+const chrome = useChromeStore()
 
 type Phase = 'loading' | 'ready' | 'error'
 

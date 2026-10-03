@@ -19,9 +19,18 @@
  * "Desktop" layout: the viewport is roomy enough for the floating track
  * column — wide AND tall. Landscape phones and other short viewports keep
  * the compact bottom tray even when they are wide. Keep in sync with
- * DESKTOP_MEDIA in ScoreTrackControls.vue.
+ * DESKTOP_MEDIA in composables/useDesktopViewport.ts.
  */
 @custom-variant desktop (@media (min-width: 768px) and (min-height: 600px));
+
+/*
+ * The exact inverse of `desktop` (not a max-width/max-height pair: every
+ * viewport must match one of the two, so a sliver of sizes can't end up
+ * with neither). Mobile is the full-bleed layout: the score fills the
+ * screen and the chrome bars overlay it — see the `mobile:` classes on the
+ * header and the bottom chrome.
+ */
+@custom-variant mobile (@media not all and (min-width: 768px) and (min-height: 600px));
 
 @layer base {
   html {
@@ -45,6 +54,25 @@
   a[href] {
     cursor: pointer;
   }
+}
+
+/*
+ * Full-bleed mobile chrome: `viewport-fit=cover` (index.html) lets the page
+ * run under the notch and the home indicator, so the bars overlaying the
+ * score own that space themselves — the bar's background covers the inset
+ * and its content is padded clear of it.
+ *
+ * Deliberately plain and unlayered: Tailwind's utilities live in a cascade
+ * layer, so these always win over a `py-*` on the same element. The bars
+ * therefore keep their own content padding on an inner wrapper (header) or
+ * on their children (bottom chrome).
+ */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Score panel scroller: thin forest thumb, transparent track so the cream
