@@ -27,7 +27,8 @@ function stateClass(active: boolean): string {
     : 'bg-tartan text-cream hover:bg-forest hover:text-gold'
 }
 
-/** One button for play/pause: while playing it pauses, otherwise it plays. */
+const BUTTON = 'flex h-10 w-10 items-center justify-center rounded-full transition'
+
 function onToggle(): void {
   if (props.state === 'playing') {
     emit('pause')
@@ -38,13 +39,13 @@ function onToggle(): void {
 </script>
 
 <template>
-  <div class="flex items-center gap-2" role="group" aria-label="Playback controls">
+  <div class="flex items-center gap-3" role="group" aria-label="Playback controls">
     <button
       type="button"
       aria-label="Stop"
       title="Stop"
       :aria-pressed="state === 'stopped'"
-      :class="['rounded-full p-2 transition', stateClass(state === 'stopped')]"
+      :class="[BUTTON, stateClass(state === 'stopped')]"
       @click="$emit('stop')"
     >
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
@@ -57,7 +58,7 @@ function onToggle(): void {
       :aria-label="state === 'playing' ? 'Pause' : 'Play'"
       :title="state === 'playing' ? 'Pause' : 'Play'"
       :aria-pressed="state === 'playing'"
-      :class="['rounded-full p-2 transition', stateClass(state === 'playing')]"
+      :class="[BUTTON, stateClass(state === 'playing')]"
       @click="onToggle"
     >
       <svg

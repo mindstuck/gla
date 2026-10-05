@@ -3,26 +3,32 @@
        flex-1/min-h-0 chain resolve, so the score viewport scrolls internally
        and the footer stays pinned instead of the document growing.
        overflow-hidden clips the chrome while it slides off the edges. -->
-  <div class="flex h-dvh flex-col overflow-hidden bg-forest text-gold">
-    <!-- Mobile: the header floats over the score's top edge (absolute, so
-         hiding it never resizes the score) and covers the notch area, which
-         .safe-area-top keeps clear of its content. Desktop keeps it in flow,
-         floating on the same margin. The wordmark is centred and set in
-         Rubik Broken Fax (font-fax). -->
-    <header
-      data-chrome
-      class="liquid-glass mobile:liquid-frost rounded-xl safe-area-top transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:top-3 mobile:z-40 desktop:m-3"
-      :class="{ 'mobile:-translate-y-full': !chrome.visible }"
-      :inert="!chrome.visible"
-    >
-      <div class="px-6 py-4 text-center">
-        <h1 class="font-fax text-xl tracking-wide">GLA</h1>
-      </div>
-    </header>
+  <div class="flex h-dvh flex-col overflow-hidden bg-bottle text-gold">
+    <!-- One shared column caps the header, the score viewport and the footer
+         at the same width (the app's max width), centred on wide screens —
+         without it the header alone ran edge to edge while everything below
+         it stopped at the cap. -->
+    <div class="mx-auto flex min-h-0 w-full max-w-[92rem] flex-1 flex-col">
+      <!-- Mobile: the header floats over the score's top edge (absolute, so
+           hiding it never resizes the score) and covers the notch area, which
+           .safe-area-top keeps clear of its content. Desktop keeps it in flow,
+           floating on the same margin. The wordmark is centred and set in
+           Black Ops One (font-display). -->
+      <header
+        data-chrome
+        class="safe-area-top bg-forest border-b border-gold/15 rounded-[55px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-40 desktop:m-3"
+        :class="{ 'mobile:translate-y-[calc(-100%_-_var(--chrome-inset))]': !chrome.visible }"
+        :inert="!chrome.visible"
+      >
+        <div class="px-6 py-4 text-center">
+          <h1 class="font-display text-xl tracking-wide">GLA</h1>
+        </div>
+      </header>
 
-    <main class="mx-auto flex min-h-0 w-full max-w-[92rem] flex-1 flex-col bg-bottle">
-      <router-view />
-    </main>
+      <main class="flex min-h-0 w-full flex-1 flex-col bg-bottle">
+        <router-view />
+      </main>
+    </div>
   </div>
 </template>
 

@@ -1,8 +1,8 @@
 import { createPinia } from 'pinia'
 import { createRouter, createWebHistory } from 'vue-router'
 import App from './App.vue'
-// Header wordmark (Rubik Broken Fax, latin subset, weight 400 only).
-import '@fontsource/rubik-broken-fax/latin-400.css'
+// Header wordmark (Black Ops One, latin subset, weight 400 only).
+import '@fontsource/black-ops-one/latin-400.css'
 import './style.css'
 import { createApp } from 'vue'
 

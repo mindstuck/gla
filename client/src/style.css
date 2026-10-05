@@ -5,8 +5,8 @@
  */
 @theme {
   /* Backgrounds */
-  --color-forest: #023020; /* deep forest green — page (parent) background */
-  --color-bottle: #004b2b; /* noble bottle green — secondary background (main column) */
+  --color-forest: #023020; /* deep forest green — dark surface (the header card) */
+  --color-bottle: #004b2b; /* noble bottle green — background (page and main column) */
   --color-tartan: #0b2b26; /* tartan green — special background (rare usage) */
 
   /* Text */
@@ -14,8 +14,8 @@
   --color-cream: #e6d7c3; /* secondary text */
   --color-clay: #c36a4b; /* special text (rare usage) */
 
-  /* Display face — the GLA wordmark in the header (`font-fax`). */
-  --font-fax: 'Rubik Broken Fax', 'Rubik', system-ui, sans-serif;
+  /* Display face — the GLA wordmark in the header (`font-display`). */
+  --font-display: 'Black Ops One', system-ui, sans-serif;
 }
 
 /*
@@ -40,10 +40,19 @@
     /* Reserve the browser scrollbar's width on the right so page content
        never runs underneath it (and never shifts when it appears). */
     scrollbar-gutter: stable;
+
+    /* The document never scrolls, and swiping down on the bottom chrome must
+       stay our gesture: this is the documented way to turn off the browser's
+       pull-to-refresh, which otherwise hijacks the swipe (and the score's own
+       overscroll) with a refresh spinner. */
+    overscroll-behavior: none;
   }
 
   body {
-    background-color: var(--color-forest);
+    /* The page shows around the capped, centred app column — and in the
+       scrollbar gutter reserved on the right. It follows the app's own
+       background so neither reads as a seam against the other. */
+    background-color: var(--color-bottle);
   }
 
   /* Palette-colored text selection instead of the browser default blue. */
@@ -62,56 +71,34 @@
 /*
  * Full-bleed mobile chrome: `viewport-fit=cover` (index.html) lets the page
  * run under the notch and the home indicator, so the bars overlaying the
- * score own that space themselves — the bar's background covers the inset
- * and its content is padded clear of it.
+ * score own that space themselves.
+ *
+ * Each bar floats `--chrome-inset` inside the viewport — 12px, plus the home
+ * indicator for the bottom one — and that single value drives three things:
+ * the bar's offset (`top`/`bottom`), the distance it travels to slide fully
+ * out of view (the hidden-state `translate-y-[calc(...)]` on both bars), and,
+ * on the header, the padding that keeps its text clear of the notch.
+ *
+ * The bottom bar's inset belongs to its *offset*, never its padding: the home
+ * indicator shows and hides dynamically, and padding would grow the card by
+ * that much and shove everything inside it up and down with every change.
+ * Moving the whole card instead keeps its height — and with it the position of
+ * every control inside — fixed.
  *
  * Deliberately plain and unlayered: Tailwind's utilities live in a cascade
- * layer, so these always win over a `py-*` on the same element. The bars
- * therefore keep their own content padding on an inner wrapper (header) or
- * on their children (bottom chrome). The margin the bars float on (see
- * `liquid-glass` below) is deliberately *outside* this padding: on a
- * notched device the card starts a few pixels down but its background still
- * runs behind the status bar, while the padding keeps the text clear of it.
+ * layer, so these always win over a `py-*` or a positioning utility on the
+ * same element. The bars' horizontal placement (`inset-x-3`) and the header's
+ * own z-index therefore stay in the template.
  */
 .safe-area-top {
+  --chrome-inset: 0.75rem;
+  top: var(--chrome-inset);
   padding-top: env(safe-area-inset-top);
 }
 
 .safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-
-/*
- * Liquid-glass chrome: the header and the bottom stack float over the score
- * as translucent, rounded cards.
- *
- * Everything comes from the palette — the film is deep forest green (kept
- * near-opaque so the gold text stays readable over the cream paper), the
- * hairline edge is gold and the top highlight is cream, so the bars read as
- * tinted glass rather than grey plastic.
- */
-@utility liquid-glass {
-  background-color: color-mix(in srgb, var(--color-forest) 76%, transparent);
-  border: 1px solid color-mix(in srgb, var(--color-gold) 24%, transparent);
-  box-shadow:
-    0 10px 30px color-mix(in srgb, var(--color-forest) 45%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--color-cream) 16%, transparent);
-}
-
-/*
- * The frosting, kept separate from the film and applied with `mobile:` only.
- *
- * Two reasons it must not reach the desktop bottom stack: on desktop both
- * bars are in flow over a flat background (there is nothing behind them to
- * blur), and `backdrop-filter` makes an element the containing block for
- * absolutely positioned descendants — which would re-home the desktop track
- * column (`desktop:absolute desktop:left-6 desktop:top-6`, ScoreTrackControls)
- * onto the footer at the bottom of the screen instead of the score's
- * top-left corner. On mobile the column is in flow, so frost is safe there.
- */
-@utility liquid-frost {
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  --chrome-inset: calc(0.75rem + env(safe-area-inset-bottom));
+  bottom: var(--chrome-inset);
 }
 
 /* Score panel scroller: thin forest thumb, transparent track so the cream

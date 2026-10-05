@@ -1,168 +1,3 @@
-<template>
-  <div class="relative flex min-h-0 flex-1 flex-col">
-    <!-- Score panel: full-bleed by default — no margin, padding or border, so
-         the score reaches every screen edge. The chrome bars overlay it
-         instead of taking a slice of it, and only the roomy desktop layout
-         floats it in a dashed frame (`desktop:` adds what mobile omits).
-
-         `isolate` fixes the cursor overlap: alphaTab renders its playback
-         cursor and bar highlight in a `.at-cursors` layer with z-index 1000,
-         which would otherwise paint straight over the chrome bars (z-30/z-40)
-         as they float across the score. A stacking context of its own keeps
-         those z-indexes contained, so the bars always cover the cursor — and
-         their glass blurs it instead. -->
-    <div
-      class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-tartan desktop:m-4 desktop:rounded-xl desktop:border-4 desktop:border-dashed desktop:border-gold/70"
-    >
-      <!-- Placeholder when the song has no score file configured -->
-      <div v-if="!song.filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
-        <p class="text-gold">Score viewport — notes &amp; tabs render here</p>
-        <p class="text-xs text-cream/60">This song has no score file yet</p>
-      </div>
-
-      <template v-else>
-        <!-- The scroller wraps alphaTab's container instead of being it: alphaTab
-             measures its container's offsetWidth (border box), which a flex-stretched
-             scroll container never shrinks when its own scrollbar appears — leaving a
-             permanent ~15px horizontal overflow. As an auto-width block inside the
-             scroller, the container's offsetWidth tracks the available width and
-             alphaTab re-renders to fit; the reserved gutter (stable) prevents even a
-             transient overflow while the vertical scrollbar settles.
-             Cream "paper": alphaTab draws notation on a transparent surface. -->
-        <div
-          ref="scroller"
-          class="score-scrollbar min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
-        >
-          <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
-          <div ref="host" />
-        </div>
-
-        <!-- Continues the score's cream "paper" below the scroller. Hidden on
-             mobile: there the paper must run edge to edge, this line is
-             metadata rather than score (and the bottom chrome would cover it). -->
-        <p
-          v-if="phase === 'ready'"
-          class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60 mobile:hidden"
-        >
-          {{ song.filePath }}
-        </p>
-
-        <!-- Loading -->
-        <div
-          v-if="phase === 'loading'"
-          class="absolute inset-0 z-10 flex items-center justify-center bg-tartan/90"
-          role="status"
-        >
-          <span class="animate-pulse text-cream/60">Loading score…</span>
-        </div>
-
-        <!-- Error -->
-        <div
-          v-else-if="phase === 'error'"
-          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-tartan/95 p-6 text-center"
-          role="alert"
-        >
-          <p class="text-lg text-clay">Couldn't load the score</p>
-          <p class="text-sm text-cream/60">{{ errorMessage }}</p>
-          <p class="font-mono text-xs text-cream/40">{{ song.filePath }}</p>
-          <button
-            type="button"
-            class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
-            @click="init"
-          >
-            Retry
-          </button>
-        </div>
-      </template>
-    </div>
-
-    <!-- Bottom chrome: the track controls, the transport row and the song
-         identity — this component owns all three.
-         Mobile: one stack overlaying the score's bottom edge, slid away as a
-         unit with a transform (the score underneath never resizes) and padded
-         clear of the home indicator by .safe-area-bottom. Swiping anywhere on
-         it — the footer or the open tray — up opens it onto the track
-         controls, down closes it again.
-         Desktop: a plain block — the tray inside positions itself over the
-         score's top-left corner and the footer keeps its in-flow row, so the
-         overflow clip that rounds the card is mobile-only. -->
-    <div
-      data-chrome
-      class="liquid-glass mobile:liquid-frost rounded-xl safe-area-bottom transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:bottom-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
-      :class="{ 'mobile:translate-y-full': !chrome.visible }"
-      :inert="!chrome.visible"
-      @touchstart.passive="onSwipeStart"
-      @touchend="onSwipeEnd"
-    >
-      <!-- Track selector: absolute column over the score's top-left corner
-           on desktop, in-flow tray above the transport row on mobile.
-           The wrapper is what the footer's expansion grows (0 -> the tray's
-           content height), so the footer stays glued to the bottom edge and
-           the score underneath never resizes; it is inert while closed so
-           the hidden buttons stay out of the tab order. -->
-      <div
-        id="track-tray"
-        ref="tray"
-        class="max-h-[var(--tray-h)] overflow-x-hidden overflow-y-auto transition-[max-height] duration-300 ease-out desktop:max-h-none desktop:overflow-visible"
-        :class="{ 'border-b border-cream/10': chrome.expanded }"
-        :style="{ '--tray-h': `${trayHeight}px` }"
-        :inert="!isDesktop && !chrome.expanded"
-      >
-        <ScoreTrackControls
-          :tracks="trackControls"
-          @mute="onToggleMute"
-          @solo="onToggleSolo"
-          @volume="onSetVolume"
-          @open="onToggleRender"
-        />
-      </div>
-
-      <!-- Three columns so the swipe indicator sits dead centre without ever
-           colliding with the transport buttons or the (truncated) title. Each
-           child claims its own column: on desktop the indicator is display
-           none, and auto-placement would otherwise slide the title into the
-           empty middle track instead of the right-hand one. (The swipe itself
-           is bound on the whole bottom chrome, above; the hairline above this
-           row belongs to the tray, and only shows when it is open.) -->
-      <footer class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3">
-        <PlayerControls class="col-start-1" :state="playbackState" @stop="stop" @play="play" @pause="pause" />
-
-        <!-- Swipe indicator: up opens the track controls, down closes them.
-             Also a plain button, so the gesture is not the only way in —
-             keyboard and mouse users get one too. -->
-        <button
-          type="button"
-          class="col-start-2 hidden rounded-full p-2 text-gold/70 transition hover:text-gold active:opacity-70 mobile:block"
-          aria-controls="track-tray"
-          :aria-expanded="chrome.expanded"
-          :aria-label="chrome.expanded ? 'Hide track controls' : 'Show track controls'"
-          :title="chrome.expanded ? 'Swipe down to hide the track controls' : 'Swipe up to show the track controls'"
-          @click="toggleTrackTray"
-        >
-          <svg
-            class="h-4 w-4 transition-transform duration-300"
-            :class="chrome.expanded ? 'rotate-180' : ''"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M4 10l4-4 4 4" />
-          </svg>
-        </button>
-
-        <div class="col-start-3 min-w-0 text-right">
-          <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
-          <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
-        </div>
-      </footer>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { AlphaTabApi, FileLoadError, PlayerMode, synth } from '@coderline/alphatab'
 import type { model } from '@coderline/alphatab'
@@ -367,6 +202,12 @@ function init(): void {
 function play(): void {
   if (phase.value === 'ready' && playbackState.value !== 'playing') {
     api?.play()
+    // The music has started, so the bars are in the way now: fold them away
+    // immediately instead of letting the idle countdown run. Desktop pins its
+    // chrome (nothing there ever hides), so the dismissal is mobile-only.
+    if (!isDesktop.value) {
+      chrome.dismiss()
+    }
   }
 }
 
@@ -381,6 +222,45 @@ function stop(): void {
   // Stop means back to the beginning — reset the panel view with the cursor.
   if (scroller.value) {
     scroller.value.scrollTop = 0
+  }
+}
+
+/** True for a target that needs its spacebar: text entry, not the transport. */
+function isTextEntry(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  if (target.isContentEditable) return true
+  if (target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return true
+  // Only text-entry inputs: the tray's volume sliders never take a space.
+  if (target instanceof HTMLInputElement) {
+    return !['range', 'checkbox', 'radio', 'button', 'reset', 'submit', 'file', 'image'].includes(target.type)
+  }
+  return false
+}
+
+/**
+ * Space plays/pauses, Ctrl+Space stops — the transport's keyboard layer.
+ *
+ * The document itself never scrolls, so Space has no default of its own to
+ * preserve; it is only left alone when a focused control would handle it
+ * itself (a button activates on Space), otherwise the same press would fire
+ * twice. Ctrl+Space is always ours — no control activates while Ctrl is held.
+ */
+function onKeydown(event: KeyboardEvent): void {
+  if (event.code !== 'Space' || isTextEntry(event.target)) return
+
+  if (event.ctrlKey) {
+    event.preventDefault()
+    stop()
+    return
+  }
+
+  if (event.target instanceof HTMLElement && event.target.closest('button, a[href]')) return
+
+  event.preventDefault()
+  if (playbackState.value === 'playing') {
+    pause()
+  } else {
+    play()
   }
 }
 
@@ -511,10 +391,12 @@ watch([() => chrome.expanded, () => trackControls.value.length], syncTrayHeight)
 onMounted(() => {
   // The cap depends on the viewport, so a resize re-measures an open tray.
   window.addEventListener('resize', syncTrayHeight)
+  window.addEventListener('keydown', onKeydown)
   init()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('resize', syncTrayHeight)
+  window.removeEventListener('keydown', onKeydown)
   teardown()
 })
 watch(
@@ -522,3 +404,172 @@ watch(
   () => init(),
 )
 </script>
+
+<template>
+  <div class="relative flex min-h-0 flex-1 flex-col">
+    <!-- Score panel: full-bleed by default — no margin, padding or border, so
+         the score reaches every screen edge. The chrome bars overlay it
+         instead of taking a slice of it, and only the roomy desktop layout
+         floats it in a dashed frame (`desktop:` adds what mobile omits).
+
+         `isolate` fixes the cursor overlap: alphaTab renders its playback
+         cursor and bar highlight in a `.at-cursors` layer with z-index 1000,
+         which would otherwise paint straight over the chrome bars (z-30/z-40)
+         as they float across the score. A stacking context of its own keeps
+         those z-indexes contained, so the bars always cover the cursor. -->
+    <div
+      class="relative isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-tartan desktop:m-4 desktop:rounded-xl desktop:border-4 desktop:border-dashed desktop:border-gold/70"
+    >
+      <!-- Placeholder when the song has no score file configured -->
+      <div v-if="!song.filePath" class="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center">
+        <p class="text-gold">Score viewport — notes &amp; tabs render here</p>
+        <p class="text-xs text-cream/60">This song has no score file yet</p>
+      </div>
+
+      <template v-else>
+        <!-- The scroller wraps alphaTab's container instead of being it: alphaTab
+             measures its container's offsetWidth (border box), which a flex-stretched
+             scroll container never shrinks when its own scrollbar appears — leaving a
+             permanent ~15px horizontal overflow. As an auto-width block inside the
+             scroller, the container's offsetWidth tracks the available width and
+             alphaTab re-renders to fit; the reserved gutter (stable) prevents even a
+             transient overflow while the vertical scrollbar settles.
+             Cream "paper": alphaTab draws notation on a transparent surface. -->
+        <div
+          ref="scroller"
+          class="score-scrollbar min-h-0 flex-1 overflow-y-auto bg-cream [scrollbar-gutter:stable]"
+        >
+          <!-- alphaTab renders into this element imperatively; Vue must not manage its children. -->
+          <div ref="host" />
+        </div>
+
+        <!-- Continues the score's cream "paper" below the scroller. Hidden on
+             mobile: there the paper must run edge to edge, this line is
+             metadata rather than score (and the bottom chrome would cover it). -->
+        <p
+          v-if="phase === 'ready'"
+          class="bg-cream px-3 pb-2 pt-1 text-center font-mono text-[10px] text-forest/60 mobile:hidden"
+        >
+          {{ song.filePath }}
+        </p>
+
+        <!-- Loading -->
+        <div
+          v-if="phase === 'loading'"
+          class="absolute inset-0 z-10 flex items-center justify-center bg-tartan/90"
+          role="status"
+        >
+          <span class="animate-pulse text-cream/60">Loading score…</span>
+        </div>
+
+        <!-- Error -->
+        <div
+          v-else-if="phase === 'error'"
+          class="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-tartan/95 p-6 text-center"
+          role="alert"
+        >
+          <p class="text-lg text-clay">Couldn't load the score</p>
+          <p class="text-sm text-cream/60">{{ errorMessage }}</p>
+          <p class="font-mono text-xs text-cream/40">{{ song.filePath }}</p>
+          <button
+            type="button"
+            class="rounded-full bg-gold px-4 py-1.5 text-sm font-medium text-forest transition hover:bg-cream"
+            @click="init"
+          >
+            Retry
+          </button>
+        </div>
+      </template>
+    </div>
+
+    <!-- Bottom chrome: the track controls, the transport row and the song
+         identity — this component owns all three.
+         Mobile: one stack overlaying the score's bottom edge, slid away as a
+         unit with a transform (the score underneath never resizes). Its
+         offset — clear of the home indicator — comes from .safe-area-bottom,
+         which also drives the hidden-state transform below so nothing of the
+         card is left peeking above the bottom edge. Swiping anywhere on it —
+         the footer or the open tray — up opens it onto the track controls,
+         down closes it again.
+         Desktop: a plain block — the tray inside positions itself over the
+         score's top-left corner and the footer keeps its in-flow row, so the
+         overflow clip that rounds the card is mobile-only. -->
+    <div
+      data-chrome
+      class="safe-area-bottom bg-bottle rounded-[55px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
+      :class="{ 'mobile:translate-y-[calc(100%_+_var(--chrome-inset))]': !chrome.visible }"
+      :inert="!chrome.visible"
+      @touchstart.passive="onSwipeStart"
+      @touchend="onSwipeEnd"
+    >
+      <!-- Track selector: absolute column over the score's top-left corner
+           on desktop, in-flow tray above the transport row on mobile.
+           The wrapper is what the footer's expansion grows (0 -> the tray's
+           content height), so the footer stays glued to the bottom edge and
+           the score underneath never resizes; it is inert while closed so
+           the hidden buttons stay out of the tab order. -->
+      <div
+        id="track-tray"
+        ref="tray"
+        class="max-h-[var(--tray-h)] overflow-x-hidden overflow-y-auto transition-[max-height] duration-300 ease-out desktop:max-h-none desktop:overflow-visible"
+        :class="{ 'border-b border-cream/10': chrome.expanded }"
+        :style="{ '--tray-h': `${trayHeight}px` }"
+        :inert="!isDesktop && !chrome.expanded"
+      >
+        <ScoreTrackControls
+          :tracks="trackControls"
+          @mute="onToggleMute"
+          @solo="onToggleSolo"
+          @volume="onSetVolume"
+          @open="onToggleRender"
+        />
+      </div>
+
+      <!-- Three columns so the swipe indicator sits dead centre without ever
+           colliding with the transport buttons or the (truncated) title. Each
+           child claims its own column: on desktop the indicator is display
+           none, and auto-placement would otherwise slide the title into the
+           empty middle track instead of the right-hand one. (The swipe itself
+           is bound on the whole bottom chrome, above; the hairline above this
+           row belongs to the tray, and only shows when it is open.)
+
+           `touch-none` keeps the swipe ours: no browser gesture may start on
+           this row, or a swipe down turns into a pull-to-refresh instead. -->
+      <footer class="grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-3 touch-none">
+        <PlayerControls class="col-start-1" :state="playbackState" @stop="stop" @play="play" @pause="pause" />
+
+        <!-- Swipe indicator: up opens the track controls, down closes them.
+             Also a plain button, so the gesture is not the only way in —
+             keyboard and mouse users get one too. -->
+        <button
+          type="button"
+          class="col-start-2 hidden rounded-full p-2 text-gold/70 transition hover:text-gold active:opacity-70 mobile:block"
+          aria-controls="track-tray"
+          :aria-expanded="chrome.expanded"
+          :aria-label="chrome.expanded ? 'Hide track controls' : 'Show track controls'"
+          :title="chrome.expanded ? 'Swipe down to hide the track controls' : 'Swipe up to show the track controls'"
+          @click="toggleTrackTray"
+        >
+          <svg
+            class="h-4 w-4 transition-transform duration-300"
+            :class="chrome.expanded ? 'rotate-180' : ''"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 10l4-4 4 4" />
+          </svg>
+        </button>
+
+        <div class="col-start-3 min-w-0 text-right">
+          <p class="truncate text-sm font-medium text-gold">{{ song.title }}</p>
+          <p class="truncate text-xs text-cream/70">{{ song.author }}</p>
+        </div>
+      </footer>
+    </div>
+  </div>
+</template>

@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 /** Idle time without a tap before the chrome slides away. */
-const AUTO_HIDE_MS = 2500
+const AUTO_HIDE_MS = 3000
 
 /**
  * Visibility of the overlaying chrome (header, bottom stack) plus the bottom
@@ -12,7 +12,9 @@ const AUTO_HIDE_MS = 2500
  * bars float on top of it and slide out of the way when reading — mobile
  * YouTube style. Taps are the only interaction that moves them: a tap on the
  * score toggles the chrome, a tap on the chrome itself keeps it up (and
- * restarts the countdown) so pressing a control never hides the controls.
+ * restarts the countdown) so pressing a control never hides the controls —
+ * with one deliberate exception, `dismiss()`, which Play uses to take them
+ * away at once.
  *
  * The footer expands onto the track controls (swipe up, or the arrow in its
  * middle) and that expansion pins the chrome on its own: while the panel is
@@ -74,8 +76,13 @@ export const useChromeStore = defineStore('chrome', () => {
       return // the open track panel holds everything up until it closes
     }
     if (onChrome) {
-      visible.value = true
-      arm()
+      // Keeping it up means restarting the countdown — but only while it is
+      // up. The bars are inert when hidden, so a tap on the chrome normally
+      // implies `visible`; forcing it back on would undo the dismissal that a
+      // control just made (Play hides the chrome, this click follows it).
+      if (visible.value) {
+        arm()
+      }
       return
     }
     visible.value = !visible.value
@@ -84,6 +91,20 @@ export const useChromeStore = defineStore('chrome', () => {
     } else {
       clearTimer()
     }
+  }
+
+  /**
+   * Hides the chrome now: no countdown left running, no open track panel left
+   * behind. Playback starting is what calls it — the score is what matters
+   * then, and the bars would otherwise sit over it for another idle period.
+   *
+   * Mobile-only by contract (see ScoreViewport's `play`): desktop pins its
+   * chrome, and nothing there would ever bring a dismissed one back.
+   */
+  function dismiss(): void {
+    clearTimer()
+    expanded.value = false
+    visible.value = false
   }
 
   /** Opens the footer onto the track controls: chrome up, countdown off. */
@@ -102,5 +123,5 @@ export const useChromeStore = defineStore('chrome', () => {
     arm()
   }
 
-  return { visible, expanded, arm, pin, wake, tap, expand, collapse }
+  return { visible, expanded, arm, pin, wake, tap, dismiss, expand, collapse }
 })
