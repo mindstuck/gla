@@ -37,8 +37,15 @@ async function getJson(path: string): Promise<unknown> {
 }
 
 /** Returns all songs, or throws ApiError. */
-export async function fetchSongs(): Promise<Song[]> {
-  return (await getJson('/songs')) as Song[]
+export async function fetchSongs(): Promise<Song[] | null> {
+  try {
+    return (await getJson('/songs')) as Song[]
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      return null
+    }
+    throw error
+  }
 }
 
 /**

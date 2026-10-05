@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchSongById } from '../services/songApi'
+import { fetchSongById, fetchSongs } from '../services/songApi'
 import type { Song } from '../types/song'
 
 /**
@@ -10,6 +10,7 @@ import type { Song } from '../types/song'
  */
 export const useSongStore = defineStore('song', () => {
   const song = ref<Song | null>(null)
+  const songs = ref<Song[] | null>(null)
   const loading = ref(false)
   const notFound = ref(false)
   const error = ref<string | null>(null)
@@ -39,6 +40,24 @@ export const useSongStore = defineStore('song', () => {
     }
   }
 
+  async function loadAll(): Promise<void> {
+    loading.value = true
+    notFound.value = false
+    error.value = null
+
+    try {
+      const result = await fetchSongs()
+      songs.value = result
+      notFound.value = result == null || !result.length
+    }
+    catch (e) {
+      songs.value = null
+      error.value = e instanceof Error ? e.message : 'Unknown error'
+    } finally {
+      loading.value = false
+    }
+  }
+
   function reset(): void {
     requestSeq += 1
     song.value = null
@@ -47,5 +66,5 @@ export const useSongStore = defineStore('song', () => {
     error.value = null
   }
 
-  return { song, loading, notFound, error, load, reset }
+  return { song, songs, loading, notFound, error, load, loadAll, reset }
 })

@@ -33,24 +33,27 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { onBeforeUnmount, onMounted, watch, computed } from 'vue'
 import { useDesktopViewport } from './composables/useDesktopViewport'
 import { useChromeStore } from './stores/chrome'
-
+import { useRoute } from 'vue-router'
+const route = useRoute()
 const chrome = useChromeStore()
 const isDesktop = useDesktopViewport()
+
+const pinChrome = computed(() => isDesktop.value || !!route.meta.pinChrome)
 
 /** Taps are the only interaction: on the score they toggle the chrome,
  *  on the chrome itself they keep it up and restart the countdown. */
 function onTap(event: MouseEvent): void {
-  if (isDesktop.value || !(event.target instanceof Element)) return
+  if (pinChrome.value || !(event.target instanceof Element)) return
   chrome.tap(event.target.closest('[data-chrome]') !== null)
 }
 
 /** A gesture starting on the chrome (a slider drag, say) holds it open —
  *  the finger may well stay down longer than the idle delay. */
 function onPointerDown(event: PointerEvent): void {
-  if (isDesktop.value || !(event.target instanceof Element)) return
+  if (pinChrome.value || !(event.target instanceof Element)) return
   if (event.target.closest('[data-chrome]')) {
     chrome.wake()
   }
@@ -59,7 +62,7 @@ function onPointerDown(event: PointerEvent): void {
 /** The countdown restarts when the finger lifts; the `click` that follows
  *  (the tap itself) then decides by toggling. */
 function onPointerUp(): void {
-  if (isDesktop.value) return
+  if (pinChrome.value) return
   chrome.arm()
 }
 
@@ -78,8 +81,8 @@ onBeforeUnmount(() => {
 // Desktop pins the chrome; mobile arms the countdown — on load and whenever
 // the viewport stops being desktop.
 watch(
-  isDesktop,
-  (desktop) => (desktop ? chrome.pin() : chrome.arm()),
-  { immediate: true },
+  pinChrome,
+  (pin) => (pin ? chrome.pin() : chrome.arm()),
+  { immediate: true }
 )
 </script>

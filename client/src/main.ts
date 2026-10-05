@@ -9,9 +9,9 @@ import { createApp } from 'vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    // The song list comes later; for now every visit opens the first seeded song.
-    { path: '/', redirect: '/songs/1' },
+    { path: '/', redirect: '/songs' },
     { path: '/songs/:id', name: 'song', component: () => import('./views/SongView.vue') },
+    { path: '/songs', name: 'songs', component: () => import('./views/SongsListView.vue'), meta: { pinChrome: true } },
   ],
 })
 
