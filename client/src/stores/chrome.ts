@@ -5,6 +5,17 @@ import { ref } from 'vue'
 const AUTO_HIDE_MS = 3000
 
 /**
+ * How a page uses the chrome.
+ *
+ * - `'pinned'` — the bars belong to that page and stay: no countdown runs and
+ *   neither taps nor `dismiss()` can take them away. Desktop pins this way
+ *   always, and any route may opt in with `meta: { chrome: 'pinned' }`.
+ * - `'collapsible'` — the mobile default: the bars auto-hide after the idle
+ *   countdown and come back on a tap.
+ */
+export type ChromeMode = 'pinned' | 'collapsible'
+
+/**
  * Visibility of the overlaying chrome (header, bottom stack) plus the bottom
  * stack's expanded state.
  *
@@ -22,9 +33,15 @@ const AUTO_HIDE_MS = 3000
  * would vanish mid-use. Closing it hands the countdown back.
  *
  * The bars are always present on desktop, which pins them: there the score is
- * not full-bleed, nothing ever hides and the footer never expands.
+ * not full-bleed, nothing ever hides and the footer never expands. A page may
+ * pin itself the same way on any viewport through its route's `chrome` meta
+ * (App.vue maps that — and the viewport — onto `setMode`), so a page that
+ * wants the bars out of the way keeps the collapsible default while one that
+ * doesn't (the songs list) asks for pinned.
  */
 export const useChromeStore = defineStore('chrome', () => {
+  /** What the current page asked for; applied through `setMode`. */
+  const mode = ref<ChromeMode>('collapsible')
   /** Chrome visibility. `true` whenever it is pinned (desktop) or armed. */
   const visible = ref(true)
   /** Bottom chrome opened onto the track controls — mobile only. */
@@ -42,8 +59,9 @@ export const useChromeStore = defineStore('chrome', () => {
   /** (Re)starts the idle countdown that hides the chrome. */
   function arm(): void {
     clearTimer()
-    if (expanded.value) {
-      return // an open footer pins the chrome by itself
+    if (mode.value === 'pinned' || expanded.value) {
+      // pinned pages never hide; an open footer pins the chrome by itself
+      return
     }
     hideTimer = setTimeout(() => {
       hideTimer = undefined
@@ -52,11 +70,32 @@ export const useChromeStore = defineStore('chrome', () => {
   }
 
   /** Chrome stays on screen: no countdown running, nothing ever hides.
-   *  Desktop also drops any expansion — there the footer is a plain row. */
+   *  It also drops any expansion — the pinned pages (desktop, the songs list)
+   *  show their footer as a plain row. */
   function pin(): void {
     clearTimer()
     expanded.value = false
     visible.value = true
+  }
+
+  /**
+   * Applies a page's chrome behaviour — the single entry point for choosing
+   * between pinned and collapsible (App.vue feeds it the viewport and the
+   * route's `chrome` meta).
+   *
+   * Switching to pinned raises the bars at once and leaves them there;
+   * switching back hands the idle countdown over, so they fade on their own
+   * again. Everything that could hide the bars — taps, the countdown,
+   * `dismiss()` — consults `mode`, so a pinned page stays pinned no matter
+   * what fires.
+   */
+  function setMode(next: ChromeMode): void {
+    mode.value = next
+    if (next === 'pinned') {
+      pin()
+    } else {
+      arm()
+    }
   }
 
   /** Keeps the chrome up for the duration of the current gesture. */
@@ -72,6 +111,9 @@ export const useChromeStore = defineStore('chrome', () => {
    *                 footer — which keeps it up instead of toggling it.
    */
   function tap(onChrome: boolean): void {
+    if (mode.value === 'pinned') {
+      return // this page keeps its bars — a tap changes nothing
+    }
     if (expanded.value) {
       return // the open track panel holds everything up until it closes
     }
@@ -98,10 +140,14 @@ export const useChromeStore = defineStore('chrome', () => {
    * behind. Playback starting is what calls it — the score is what matters
    * then, and the bars would otherwise sit over it for another idle period.
    *
-   * Mobile-only by contract (see ScoreViewport's `play`): desktop pins its
-   * chrome, and nothing there would ever bring a dismissed one back.
+   * Pinned pages refuse it: nothing on them would ever bring a dismissed bar
+   * back, so `mode` gets the final word (Play only ever runs on a collapsible
+   * one anyway).
    */
   function dismiss(): void {
+    if (mode.value === 'pinned') {
+      return // this page keeps its bars
+    }
     clearTimer()
     expanded.value = false
     visible.value = false
@@ -123,5 +169,5 @@ export const useChromeStore = defineStore('chrome', () => {
     arm()
   }
 
-  return { visible, expanded, arm, pin, wake, tap, dismiss, expand, collapse }
+  return { mode, visible, expanded, setMode, arm, pin, wake, tap, dismiss, expand, collapse }
 })

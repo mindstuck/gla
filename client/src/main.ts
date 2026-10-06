@@ -9,11 +9,29 @@ import { createApp } from 'vue'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    // The song list comes later; for now every visit opens the first seeded song.
-    { path: '/', redirect: '/songs/1' },
+    // The songs list is the app's entry point; songs open from it.
+    { path: '/', redirect: '/songs' },
+    {
+      path: '/songs',
+      name: 'songs',
+      component: () => import('./views/SongsView.vue'),
+      // The list has no score under the bars, so they stay up here.
+      meta: { chrome: 'pinned' },
+    },
     { path: '/songs/:id', name: 'song', component: () => import('./views/SongView.vue') },
   ],
 })
+
+/**
+ * Per-page chrome behaviour: a page declares whether the bars stay pinned
+ * (never slide away) or collapse on their own. Pages that say nothing get
+ * the collapsible default; desktop pins regardless (see App.vue).
+ */
+declare module 'vue-router' {
+  interface RouteMeta {
+    chrome?: import('./stores/chrome').ChromeMode
+  }
+}
 
 const app = createApp(App)
 app.use(createPinia())

@@ -203,11 +203,9 @@ function play(): void {
   if (phase.value === 'ready' && playbackState.value !== 'playing') {
     api?.play()
     // The music has started, so the bars are in the way now: fold them away
-    // immediately instead of letting the idle countdown run. Desktop pins its
-    // chrome (nothing there ever hides), so the dismissal is mobile-only.
-    if (!isDesktop.value) {
-      chrome.dismiss()
-    }
+    // immediately instead of letting the idle countdown run. The chrome store
+    // makes the final call — desktop and pinned pages keep their bars.
+    chrome.dismiss()
   }
 }
 

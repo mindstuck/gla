@@ -33,11 +33,13 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useDesktopViewport } from './composables/useDesktopViewport'
-import { useChromeStore } from './stores/chrome'
+import { useChromeStore, type ChromeMode } from './stores/chrome'
 
 const chrome = useChromeStore()
+const route = useRoute()
 const isDesktop = useDesktopViewport()
 
 /** Taps are the only interaction: on the score they toggle the chrome,
@@ -75,11 +77,14 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerup', onPointerUp)
 })
 
-// Desktop pins the chrome; mobile arms the countdown — on load and whenever
-// the viewport stops being desktop.
-watch(
-  isDesktop,
-  (desktop) => (desktop ? chrome.pin() : chrome.arm()),
-  { immediate: true },
+// Who keeps the bars up: the viewport (desktop always pins) or the page
+// itself, which asks for it with `meta: { chrome: 'pinned' }`. Every change
+// goes through setMode, so entering a pinned page raises the bars at once
+// and leaving one hands the idle countdown back — on load and whenever the
+// viewport or the route changes.
+const chromeMode = computed<ChromeMode>(() =>
+  isDesktop.value || route.meta.chrome === 'pinned' ? 'pinned' : 'collapsible',
 )
+
+watch(chromeMode, (mode) => chrome.setMode(mode), { immediate: true })
 </script>
