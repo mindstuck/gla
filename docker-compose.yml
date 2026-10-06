@@ -6,7 +6,7 @@ services:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "GLA_dev_Pa55w0rd!"
     ports:
-      - "1444:1433"
+      - "11433:1433"
     volumes:
       - gla-sqldata:/var/opt/mssql
     restart: unless-stopped

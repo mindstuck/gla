@@ -494,7 +494,7 @@ watch(
          overflow clip that rounds the card is mobile-only. -->
     <div
       data-chrome
-      class="safe-area-bottom bg-bottle rounded-[55px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
+      class="safe-area-bottom bg-bottle rounded-[32px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
       :class="{ 'mobile:translate-y-[calc(100%_+_var(--chrome-inset))]': !chrome.visible }"
       :inert="!chrome.visible"
       @touchstart.passive="onSwipeStart"
