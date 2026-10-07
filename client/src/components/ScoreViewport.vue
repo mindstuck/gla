@@ -203,11 +203,9 @@ function play(): void {
   if (phase.value === 'ready' && playbackState.value !== 'playing') {
     api?.play()
     // The music has started, so the bars are in the way now: fold them away
-    // immediately instead of letting the idle countdown run. Desktop pins its
-    // chrome (nothing there ever hides), so the dismissal is mobile-only.
-    if (!isDesktop.value) {
-      chrome.dismiss()
-    }
+    // immediately instead of letting the idle countdown run. The chrome store
+    // makes the final call — desktop and pinned pages keep their bars.
+    chrome.dismiss()
   }
 }
 
@@ -496,7 +494,7 @@ watch(
          overflow clip that rounds the card is mobile-only. -->
     <div
       data-chrome
-      class="safe-area-bottom bg-bottle rounded-[55px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
+      class="safe-area-bottom bg-bottle rounded-[32px] transition-transform duration-300 ease-out mobile:absolute mobile:inset-x-3 mobile:z-30 mobile:flex mobile:flex-col mobile:overflow-hidden desktop:m-3"
       :class="{ 'mobile:translate-y-[calc(100%_+_var(--chrome-inset))]': !chrome.visible }"
       :inert="!chrome.visible"
       @touchstart.passive="onSwipeStart"
