@@ -1,10 +1,23 @@
+# GLA stack — dev database + production deployment.
+#
+# Platforms: the three production services are pinned to linux/arm64 (the
+# deployment target). Next to each sits a commented `platform: linux/amd64`
+# line to swap in for dev testing on x86 hosts. SQL Server is amd64-only —
+# see its service comment.
+#
+# Settings & secrets are read from .env (gitignored) — copy .env.example
+# to .env first.
+
 services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: gla-sqlserver
+    # SQL Server ships amd64 only: on an ARM64 host it runs under emulation.
+    # Avoid that by pointing DB_HOST in .env at an external database.
+    platform: linux/amd64
     environment:
       ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "GLA_dev_Pa55w0rd!"
+      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env - copy .env.example first}
     ports:
       - "11433:1433"
     volumes:
@@ -18,6 +31,56 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: gla-backend
+    container_name: gla-backend
+    platform: linux/arm64
+    # platform: linux/amd64   # x86 dev/testing — swap with the line above
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Runs EF migrations (and the seed songs) on startup against this server.
+      ConnectionStrings__GlaDb: "Server=${DB_HOST},${DB_PORT};Database=${DB_NAME};User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      Cors__AllowedOrigins__0: "${CORS_ALLOWED_ORIGIN:-http://localhost}"
+      Songs__FilesRoot: /app/storage
+    volumes:
+      # Score files (uploads + seeds) persist on the host next to the compose file.
+      - ./storage:/app/storage
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    # Not published to the host — nginx reaches it as http://backend:8080
+    # over the compose network.
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: gla-frontend
+    container_name: gla-frontend
+    platform: linux/arm64
+    # platform: linux/amd64   # x86 dev/testing — swap with the line above
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    depends_on:
+      - backend
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: gla-cloudflared
+    platform: linux/arm64
+    # platform: linux/amd64   # x86 dev/testing — swap with the line above
+    restart: unless-stopped
+    # Remotely-managed tunnel: route the public hostname to http://frontend:80
+    # in the Cloudflare dashboard (Zero Trust -> Tunnels).
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN:?Set CF_TUNNEL_TOKEN in .env - copy .env.example first}
+    depends_on:
+      - frontend
 
 volumes:
   gla-sqldata:

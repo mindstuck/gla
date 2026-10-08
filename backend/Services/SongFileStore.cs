@@ -28,8 +28,17 @@ public class SongFileStore(string filesRoot)
     private static readonly HashSet<string> ExtensionSet =
         new(Extensions, StringComparer.OrdinalIgnoreCase);
 
-    private readonly string _filesRoot =
-        Path.TrimEndingDirectorySeparator(Path.GetFullPath(filesRoot));
+    private readonly string _filesRoot = ResolveRoot(filesRoot);
+
+    private static string ResolveRoot(string filesRoot)
+    {
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(filesRoot));
+
+        // A fresh clone or a fresh compose deploy has no storage folder yet —
+        // the first upload must not 500 on a missing directory.
+        Directory.CreateDirectory(root);
+        return root;
+    }
 
     /// <summary>True when the file name ends in a supported score format.</summary>
     public bool IsSupported(string? fileName) =>

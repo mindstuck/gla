@@ -49,12 +49,12 @@ var app = builder.Build();
 app.UseCors(ApiCorsPolicy);
 app.UseHttpsRedirection();
 
-if (app.Environment.IsDevelopment())
-{
-    // Create/upgrade the database and apply seed data on startup.
-    using var scope = app.Services.CreateScope();
-    await scope.ServiceProvider.GetRequiredService<GlaDbContext>().Database.MigrateAsync();
-}
+// Create/upgrade the database and apply seed data on startup, in every
+// environment: the schema exists only because of these migrations, and the
+// seed songs are baked into them — a fresh production database (first
+// `docker compose up`) comes out populated instead of erroring on /songs.
+using var scope = app.Services.CreateScope();
+await scope.ServiceProvider.GetRequiredService<GlaDbContext>().Database.MigrateAsync();
 
 app.MapSongEndpoints();
 

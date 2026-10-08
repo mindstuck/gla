@@ -1,0 +1,12 @@
+# Build output and machine-local files stay out of the image
+**/bin/
+**/obj/
+*.user
+.vs/
+
+# Dev-only settings: the Production container is configured through the
+# environment (docker-compose.yml), so the Development connection string
+# and FilesRoot must not ship in the image.
+appsettings.Development.json
+appsettings.*.local.json
+Properties/launchSettings.json

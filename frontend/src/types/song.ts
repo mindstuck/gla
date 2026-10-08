@@ -1,5 +1,5 @@
 /**
- * Mirrors SongDto returned by the backend (GLA/Dtos/SongDto.cs).
+ * Mirrors SongDto returned by the backend (backend/Dtos/SongDto.cs).
  */
 export interface Song {
   id: number

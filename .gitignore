@@ -67,8 +67,8 @@ vite.config.ts.timestamp-*
 
 # alphaTab assets — copied from node_modules by @coderline/alphatab-vite
 # on dev/build (Bravura font + SONiVOX soundfont)
-client/public/font/
-client/public/soundfont/
+frontend/public/font/
+frontend/public/soundfont/
 
 # Environment / secrets
 .env

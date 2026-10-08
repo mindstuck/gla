@@ -3,7 +3,7 @@ using GLA.Services;
 
 namespace GLA.Tests;
 
-public class SongServiceTests
+public class SongServiceTests : IDisposable
 {
     private static readonly SongEntity ParanoidAndroid = new()
     {
@@ -21,8 +21,14 @@ public class SongServiceTests
         FilePath = "BlackHoleSun.gp4",
     };
 
-    private static SongService CreateService(params SongEntity[] songs) =>
-        new(new FakeSongRepository(songs));
+    // The service also needs the file store and file locator (upload/delete);
+    // point both at a per-test temp root so unit tests stay off the real
+    // storage folder. Constructing SongFileStore creates the root.
+    private readonly string _filesRoot =
+        Path.Combine(Path.GetTempPath(), "gla-songservice-tests-" + Guid.NewGuid());
+
+    private SongService CreateService(params SongEntity[] songs) =>
+        new(new FakeSongRepository(songs), new SongFileStore(_filesRoot), new ScoreFileLocator(_filesRoot));
 
     [Fact]
     public async Task GetById_ExistingSong_ReturnsMappedDto()
@@ -68,5 +74,89 @@ public class SongServiceTests
         var result = await service.ListAsync();
 
         Assert.Empty(result);
+    }
+
+    [Fact]
+    public async Task Create_UnsupportedExtension_ThrowsWithoutStoring()
+    {
+        var service = CreateService();
+
+        await Assert.ThrowsAsync<UnsupportedScoreFileException>(
+            () => service.CreateAsync(new MemoryStream([1, 2, 3]), "notes.txt"));
+
+        Assert.Empty(await service.ListAsync());
+    }
+
+    [Fact]
+    public async Task Create_SupportedFile_StoresRowAndBytes()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateAsync(new MemoryStream([1, 2, 3]), "Stairway to Heaven.gp4");
+
+        // Title comes from the file name, author stays empty until the client
+        // parses the score (no server-side metadata parsing).
+        Assert.Equal("Stairway to Heaven", result.Title);
+        Assert.Equal(string.Empty, result.Author);
+
+        var stored = await service.GetByIdAsync(result.Id);
+        Assert.NotNull(stored);
+        Assert.True(File.Exists(Path.Combine(_filesRoot, result.FilePath)));
+    }
+
+    [Fact]
+    public async Task Create_DuplicateFileName_GetsASuffixInsteadOfOverwriting()
+    {
+        var service = CreateService();
+
+        var first = await service.CreateAsync(new MemoryStream([1]), "Same Song.gp4");
+        var second = await service.CreateAsync(new MemoryStream([2]), "Same Song.gp4");
+
+        // The store dedupes the stored file name; the title is just the stem.
+        Assert.Equal("Same Song.gp4", first.FilePath);
+        Assert.Equal("Same Song (2).gp4", second.FilePath);
+        Assert.Equal("Same Song", first.Title);
+        Assert.Equal("Same Song", second.Title);
+        Assert.NotNull(await service.GetByIdAsync(first.Id));
+        Assert.NotNull(await service.GetByIdAsync(second.Id));
+        Assert.True(File.Exists(Path.Combine(_filesRoot, first.FilePath)));
+        Assert.True(File.Exists(Path.Combine(_filesRoot, second.FilePath)));
+    }
+
+    [Fact]
+    public async Task Delete_ExistingSong_RemovesRowThenFile()
+    {
+        var service = CreateService(ParanoidAndroid);
+        var physicalPath = Path.Combine(_filesRoot, "ParanoidAndroid.gp5");
+        await File.WriteAllTextAsync(physicalPath, "tab");
+
+        var deleted = await service.DeleteAsync(1);
+
+        Assert.True(deleted);
+        Assert.Null(await service.GetByIdAsync(1));
+        Assert.False(File.Exists(physicalPath));
+    }
+
+    [Fact]
+    public async Task Delete_MissingSong_ReturnsFalseAndKeepsTheOthers()
+    {
+        var service = CreateService(ParanoidAndroid);
+
+        var deleted = await service.DeleteAsync(999);
+
+        Assert.False(deleted);
+        Assert.NotNull(await service.GetByIdAsync(1));
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(_filesRoot, recursive: true);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // Nothing was stored — the root may never have been needed.
+        }
     }
 }

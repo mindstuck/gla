@@ -1,0 +1,11 @@
+# Dependencies and build output are (re)created inside the image
+node_modules/
+dist/
+
+# alphaTab assets — regenerated into public/ by the vite plugin during build
+public/font/
+public/soundfont/
+
+# Local env files (nothing here is used by the build)
+.env*
+*.local
