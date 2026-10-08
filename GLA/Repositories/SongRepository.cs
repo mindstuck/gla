@@ -20,4 +20,11 @@ public class SongRepository(GlaDbContext dbContext) : ISongRepository
             .OrderBy(s => s.Id)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<SongEntity> AddAsync(SongEntity song, CancellationToken cancellationToken = default)
+    {
+        dbContext.Songs.Add(song);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return song;
+    }
 }

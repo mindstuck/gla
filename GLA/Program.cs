@@ -22,6 +22,7 @@ if (!Path.IsPathRooted(filesRoot))
     filesRoot = Path.Combine(builder.Environment.ContentRootPath, filesRoot);
 }
 builder.Services.AddSingleton(new ScoreFileLocator(filesRoot));
+builder.Services.AddSingleton(new SongFileStore(filesRoot));
 
 // JSON: System.Text.Json with camelCase (ASP.NET Core defaults), configured
 // explicitly so the contract is visible. The Vite dev proxy forwards /api to this

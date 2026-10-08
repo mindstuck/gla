@@ -14,6 +14,39 @@ public static class SongEndpoints
             return Results.Ok(songs);
         });
 
+        // Upload: multipart/form-data with exactly one file part. Shape and
+        // format validation lives here / in the service (400s below).
+        group.MapPost("", async (HttpRequest request, ISongService songService, CancellationToken cancellationToken) =>
+        {
+            if (!request.HasFormContentType)
+            {
+                return Results.BadRequest(new { error = "Expected a multipart/form-data upload." });
+            }
+
+            var form = await request.ReadFormAsync(cancellationToken);
+            if (form.Files.Count != 1)
+            {
+                return Results.BadRequest(new { error = "Upload exactly one file at a time." });
+            }
+
+            var upload = form.Files[0];
+            if (upload.Length == 0)
+            {
+                return Results.BadRequest(new { error = "The file is empty." });
+            }
+
+            try
+            {
+                await using var content = upload.OpenReadStream();
+                var song = await songService.CreateAsync(content, upload.FileName, cancellationToken);
+                return Results.Created($"/api/songs/{song.Id}", song);
+            }
+            catch (UnsupportedScoreFileException e)
+            {
+                return Results.BadRequest(new { error = e.Message });
+            }
+        });
+
         group.MapGet("/{id:int}", async (int id, ISongService songService, CancellationToken cancellationToken) =>
         {
             var song = await songService.GetByIdAsync(id, cancellationToken);
