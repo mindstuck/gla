@@ -21,7 +21,10 @@
         :inert="!chrome.visible"
       >
         <div class="px-6 py-4 text-center">
-          <h1 class="font-display text-xl tracking-wide">GLA</h1>
+          <h1 class="font-display text-xl tracking-wide">
+            <!-- The wordmark is the way back to the catalogue from any page. -->
+            <router-link :to="{ name: 'songs' }">GLA</router-link>
+          </h1>
         </div>
       </header>
 

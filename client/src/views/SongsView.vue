@@ -22,11 +22,13 @@ function onUploaded(song: Song): void {
 <template>
   <!-- The shell never scrolls (h-dvh, overflow-hidden), so the list owns its
        own scroller. The header floats over its top edge on mobile — hence the
-       larger top padding there; on desktop the header sits above it in flow. -->
+       larger top padding there; on desktop the header sits above it in flow.
+       The column fills the scroller (min-h-full), which lets the link row at
+       its foot sit at the page's bottom (mt-auto) while the list is short. -->
   <div
     class="score-scrollbar min-h-0 flex-1 overflow-y-auto px-6 pt-8 pb-12 mobile:pt-24"
   >
-    <div class="mx-auto w-full max-w-2xl">
+    <div class="mx-auto flex min-h-full w-full max-w-2xl flex-col">
       <div class="mb-6 flex items-center gap-3">
         <h2 class="font-display text-xl tracking-wide text-gold">Songs</h2>
         <button
@@ -126,6 +128,51 @@ function onUploaded(song: Song): void {
           </button>
         </li>
       </ul>
+
+      <!-- The page's foot: one row of small, light links, one icon each.
+           Where to find files to upload, and where the project lives. -->
+      <div class="mt-auto flex items-center gap-5 pt-10 text-xs font-light text-cream/60">
+        <a
+          href="https://gprotab.net/"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1.5 transition hover:text-gold"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="6.75" cy="6.75" r="4.5" />
+            <path d="M10.1 10.1 13.5 13.5" />
+          </svg>
+          Find songs to upload
+        </a>
+        <a
+          href="https://github.com/mindstuck/gla"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-1.5 transition hover:text-gold"
+        >
+          <svg
+            class="h-3.5 w-3.5"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="6.75" cy="6.75" r="4.5" />
+            <path d="M10.1 10.1 13.5 13.5" />
+          </svg>
+          github
+        </a>
+      </div>
     </div>
   </div>
 
