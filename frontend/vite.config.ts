@@ -12,6 +12,13 @@ export default defineConfig({
     // Listen on all interfaces so the dev app is reachable from other devices
     // on the LAN via this machine's IP (localhost keeps working).
     host: true,
+    // public/ is served live from disk on every request — HMR adds nothing
+    // there, and watching it kills the dev server on Windows (EBUSY) whenever
+    // a file inside is written or held by another process (editor, explorer
+    // preview, indexer).
+    watch: {
+      ignored: ['**/public/**'],
+    },
     proxy: {
       // Same-origin in development: the API client can call '/api/...' directly,
       // Vite forwards it to the ASP.NET Core backend without CORS.
