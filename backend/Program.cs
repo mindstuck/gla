@@ -2,13 +2,19 @@ using GLA.Data;
 using GLA.Endpoints;
 using GLA.Repositories;
 using GLA.Services;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+// SQLite: one file, no database server. The connection string comes from
+// configuration ("GlaDb"); a relative Data Source is pinned to the content
+// root by SqliteConnectionString below — SQLite itself would resolve it
+// against the process working directory, which differs between `dotnet run`,
+// `dotnet ef` and the container.
 builder.Services.AddDbContext<GlaDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("GlaDb")));
+    options.UseSqlite(SqliteConnectionString(builder)));
 
 builder.Services.AddScoped<ISongRepository, SongRepository>();
 builder.Services.AddScoped<ISongService, SongService>();
@@ -59,3 +65,24 @@ await scope.ServiceProvider.GetRequiredService<GlaDbContext>().Database.MigrateA
 app.MapSongEndpoints();
 
 app.Run();
+
+// Resolves a relative "Data Source" against the content root and creates the
+// containing folder. SQLite would otherwise resolve it against the process
+// working directory (repo root vs backend/ vs /app in the container), and a
+// fresh clone has no database folder yet.
+static string SqliteConnectionString(WebApplicationBuilder builder)
+{
+    var connectionString = builder.Configuration.GetConnectionString("GlaDb")
+        ?? "Data Source=gla.db";
+
+    var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+    if (string.IsNullOrEmpty(dataSource) || dataSource == ":memory:" || Path.IsPathRooted(dataSource))
+    {
+        return connectionString;
+    }
+
+    var fullPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, dataSource));
+    Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+
+    return new SqliteConnectionStringBuilder(connectionString) { DataSource = fullPath }.ConnectionString;
+}

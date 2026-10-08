@@ -80,6 +80,9 @@ frontend/public/soundfont/
 # (storage/ holds user-provided score files, e.g. Guitar Pro downloads)
 uploads/
 storage/
+*.db
+*.db-wal
+*.db-shm
 *.gp
 *.gp3
 *.gp4

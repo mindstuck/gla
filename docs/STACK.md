@@ -2,7 +2,7 @@
 # Backend 
  - ASP.NET Core (.NET 10)
  - EF Core
- - SQL Server Express (instance hosted as docker container)
+ - SQLite (single-file database through EF Core — no database server)
 
 # Frontend
  - Vue

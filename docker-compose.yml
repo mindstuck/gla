@@ -1,37 +1,16 @@
-# GLA stack — dev database + production deployment.
+# GLA stack — production deployment.
 #
-# Platforms: the three production services are pinned to linux/arm64 (the
-# deployment target). Next to each sits a commented `platform: linux/amd64`
-# line to swap in for dev testing on x86 hosts. SQL Server is amd64-only —
-# see its service comment.
+# The database is a single SQLite file in the gla-data volume; score files
+# live in the bind-mounted ./storage folder. There is no database service.
+#
+# Platforms: the three services are pinned to linux/arm64 (the deployment
+# target). Next to each sits a commented `platform: linux/amd64` line to
+# swap in for dev testing on x86 hosts.
 #
 # Settings & secrets are read from .env (gitignored) — copy .env.example
 # to .env first.
 
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: gla-sqlserver
-    # SQL Server ships amd64 only: on an ARM64 host it runs under emulation.
-    # Avoid that by pointing DB_HOST in .env at an external database.
-    platform: linux/amd64
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env - copy .env.example first}
-    ports:
-      - "11433:1433"
-    volumes:
-      - gla-sqldata:/var/opt/mssql
-    restart: unless-stopped
-    healthcheck:
-      test:
-        - CMD-SHELL
-        - /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" -b > /dev/null 2>&1 || /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -Q "SELECT 1" -b > /dev/null 2>&1 || exit 1
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 20s
-
   backend:
     build:
       context: ./backend
@@ -43,16 +22,15 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
-      # Runs EF migrations (and the seed songs) on startup against this server.
-      ConnectionStrings__GlaDb: "Server=${DB_HOST},${DB_PORT};Database=${DB_NAME};User Id=${DB_USER};Password=${DB_PASSWORD};TrustServerCertificate=True;Encrypt=False"
+      # SQLite file in the gla-data volume; EF migrations (and the seed
+      # songs) run against it on startup.
+      ConnectionStrings__GlaDb: "Data Source=/data/gla.db"
       Cors__AllowedOrigins__0: "${CORS_ALLOWED_ORIGIN:-http://localhost}"
       Songs__FilesRoot: /app/storage
     volumes:
-      # Score files (uploads + seeds) persist on the host next to the compose file.
+      # Database (named volume) and score files (host folder) both persist.
+      - gla-data:/data
       - ./storage:/app/storage
-    depends_on:
-      sqlserver:
-        condition: service_healthy
     # Not published to the host — nginx reaches it as http://backend:8080
     # over the compose network.
 
@@ -83,4 +61,4 @@ services:
       - frontend
 
 volumes:
-  gla-sqldata:
+  gla-data:

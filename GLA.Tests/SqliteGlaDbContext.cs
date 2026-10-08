@@ -6,7 +6,8 @@ namespace GLA.Tests;
 
 /// <summary>
 /// Creates a <see cref="GlaDbContext"/> backed by a real SQLite database held in memory,
-/// so relational behaviour (constraints, types) is exercised like on SQL Server.
+/// so relational behaviour (constraints, types) is exercised against a real engine —
+/// the same provider the application runs on.
 /// The connection must stay open for the lifetime of the test, hence IDisposable.
 /// </summary>
 public sealed class SqliteGlaDbContext : IDisposable
