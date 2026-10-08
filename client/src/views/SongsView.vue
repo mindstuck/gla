@@ -50,6 +50,15 @@ function onUploaded(song: Song): void {
         </button>
       </div>
 
+      <!-- A failed delete stays local: reported here, list untouched. -->
+      <p
+        v-if="store.deleteError"
+        class="mb-3 text-sm text-clay"
+        role="alert"
+      >
+        {{ store.deleteError }}
+      </p>
+
       <!-- Loading -->
       <p v-if="store.loading" class="animate-pulse text-cream/60" role="status">
         Loading songs…
@@ -75,10 +84,14 @@ function onUploaded(song: Song): void {
 
       <!-- Ready — the whole shared catalogue, one row per song. -->
       <ul v-else class="space-y-1">
-        <li v-for="song in store.songs" :key="song.id">
+        <li
+          v-for="song in store.songs"
+          :key="song.id"
+          class="group relative flex items-center rounded-xl transition hover:bg-forest"
+        >
           <router-link
             :to="{ name: 'song', params: { id: song.id } }"
-            class="group flex items-baseline justify-between gap-4 rounded-xl px-4 py-3.5 transition hover:bg-forest"
+            class="flex min-w-0 flex-1 items-baseline justify-between gap-4 px-4 py-3.5 transition-all mobile:pr-14 desktop:pr-4 desktop:group-hover:pr-14 desktop:group-focus-within:pr-14"
           >
             <span class="truncate text-gold group-hover:text-cream">
               {{ song.title }}
@@ -87,6 +100,30 @@ function onUploaded(song: Song): void {
               {{ song.author }}
             </span>
           </router-link>
+
+          <!-- Circle delete: always there on touch (no hover to reveal it),
+               hidden on desktop until the row is hovered or focused — the
+               link's right padding opens up at the same moment, so the icon
+               never lands on the author text. -->
+          <button
+            type="button"
+            class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-clay/50 text-clay transition hover:border-clay hover:bg-clay hover:text-forest focus-visible:outline-2 focus-visible:outline-gold mobile:opacity-100 desktop:opacity-0 desktop:group-hover:opacity-100 desktop:group-focus-within:opacity-100"
+            :aria-label="`Delete ${song.title}`"
+            :title="`Delete ${song.title}`"
+            @click="store.remove(song.id)"
+          >
+            <svg
+              class="h-4 w-4"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <path d="M4.75 4.75l6.5 6.5M11.25 4.75l-6.5 6.5" />
+            </svg>
+          </button>
         </li>
       </ul>
     </div>

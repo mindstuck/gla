@@ -27,4 +27,12 @@ public class SongRepository(GlaDbContext dbContext) : ISongRepository
         await dbContext.SaveChangesAsync(cancellationToken);
         return song;
     }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var rows = await dbContext.Songs
+            .Where(s => s.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
+        return rows > 0;
+    }
 }

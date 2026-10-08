@@ -92,3 +92,26 @@ export async function uploadSong(file: File): Promise<Song> {
 
   return (await response.json()) as Song
 }
+
+/**
+ * Deletes the song (204 on success), or throws ApiError — 404 when the id
+ * does not exist (e.g. someone else deleted it first), status otherwise.
+ */
+export async function deleteSong(id: number): Promise<void> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/songs/${id}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' },
+    })
+  } catch {
+    throw new ApiError(0, `DELETE /songs/${id} failed: network error`)
+  }
+
+  if (!response.ok) {
+    throw new ApiError(
+      response.status,
+      `DELETE /songs/${id} responded ${response.status} ${response.statusText}`,
+    )
+  }
+}

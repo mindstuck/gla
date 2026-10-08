@@ -69,5 +69,12 @@ public static class SongEndpoints
                 ? Results.NotFound()
                 : Results.File(path, ScoreFileContentTypes.FromPath(path));
         });
+
+        // Removes the song row and the score file it owns. 404 for unknown ids.
+        group.MapDelete("/{id:int}", async (int id, ISongService songService, CancellationToken cancellationToken) =>
+        {
+            var deleted = await songService.DeleteAsync(id, cancellationToken);
+            return deleted ? Results.NoContent() : Results.NotFound();
+        });
     }
 }

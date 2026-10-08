@@ -10,4 +10,7 @@ public interface ISongRepository
 
     /// <summary>Inserts the song and fills in its generated Id.</summary>
     Task<SongEntity> AddAsync(SongEntity song, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes the row; false when the id does not exist.</summary>
+    Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
 }

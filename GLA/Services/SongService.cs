@@ -4,7 +4,10 @@ using GLA.Repositories;
 
 namespace GLA.Services;
 
-public class SongService(ISongRepository songRepository, SongFileStore fileStore) : ISongService
+public class SongService(
+    ISongRepository songRepository,
+    SongFileStore fileStore,
+    ScoreFileLocator fileLocator) : ISongService
 {
     public async Task<SongDto?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
@@ -39,6 +42,37 @@ public class SongService(ISongRepository songRepository, SongFileStore fileStore
 
         await songRepository.AddAsync(entity, cancellationToken);
         return SongDto.From(entity);
+    }
+
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var song = await songRepository.GetByIdAsync(id, cancellationToken);
+        if (song is null)
+        {
+            return false;
+        }
+
+        var deleted = await songRepository.DeleteAsync(id, cancellationToken);
+        if (deleted)
+        {
+            // Row first: if file removal fails (locked, already gone) only an
+            // orphaned file remains, never a row without its score.
+            // Locate() re-checks the path against the files root.
+            var path = fileLocator.Locate(song.FilePath);
+            if (path is not null)
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+                {
+                    // Best effort — the song is already gone.
+                }
+            }
+        }
+
+        return deleted;
     }
 
     /// <summary>The uploaded file's name without extension, capped to the column size.</summary>
