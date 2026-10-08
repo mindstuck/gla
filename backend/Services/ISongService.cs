@@ -10,10 +10,17 @@ public interface ISongService
 
     /// <summary>
     /// Stores an uploaded score file under the files root and creates the
-    /// matching song row. Throws <see cref="UnsupportedScoreFileException"/>
-    /// when the extension is not an alphaTab score format.
+    /// matching song row. An explicitly given title/author wins; a blank
+    /// title falls back to the file name. Throws
+    /// <see cref="UnsupportedScoreFileException"/> when the extension is not
+    /// an alphaTab score format.
     /// </summary>
-    Task<SongDto> CreateAsync(Stream content, string fileName, CancellationToken cancellationToken = default);
+    Task<SongDto> CreateAsync(
+        Stream content,
+        string fileName,
+        string? title = null,
+        string? author = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Removes the song and the score file that belongs to it.

@@ -15,12 +15,16 @@ const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ close: []; uploaded: [song: Song] }>()
 
 const file = ref<File | null>(null)
+const title = ref('')
+const author = ref('')
 const uploading = ref(false)
 const error = ref<string | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 
 function reset(): void {
   file.value = null
+  title.value = ''
+  author.value = ''
   error.value = null
   uploading.value = false
 }
@@ -73,7 +77,14 @@ async function submit(): Promise<void> {
   error.value = null
   try {
     // The parent reacts by refetching the list and opening the new song.
-    emit('uploaded', await uploadSong(file.value))
+    emit(
+      'uploaded',
+      await uploadSong(
+        file.value,
+        title.value.trim() || undefined,
+        author.value.trim() || undefined,
+      ),
+    )
   } catch (e) {
     error.value = e instanceof ApiError ? e.message : 'Upload failed'
   } finally {
@@ -122,6 +133,27 @@ async function submit(): Promise<void> {
             {{ file ? file.name : 'No file chosen' }}
           </span>
         </label>
+
+        <!-- Optional metadata: left blank, the server falls back to the
+             file name for the title. -->
+        <label class="sr-only" for="song-title">Title (optional)</label>
+        <input
+          id="song-title"
+          v-model="title"
+          type="text"
+          maxlength="200"
+          placeholder="Title (optional — falls back to the file name)"
+          class="mt-3 w-full rounded-xl border border-gold/25 bg-bottle/40 px-4 py-2.5 text-sm text-cream outline-none transition placeholder:text-cream/40 focus:border-gold/50"
+        />
+        <label class="sr-only" for="song-author">Author (optional)</label>
+        <input
+          id="song-author"
+          v-model="author"
+          type="text"
+          maxlength="200"
+          placeholder="Author (optional)"
+          class="mt-3 w-full rounded-xl border border-gold/25 bg-bottle/40 px-4 py-2.5 text-sm text-cream outline-none transition placeholder:text-cream/40 focus:border-gold/50"
+        />
 
         <p v-if="error" class="mt-3 text-sm text-clay" role="alert">{{ error }}</p>
 

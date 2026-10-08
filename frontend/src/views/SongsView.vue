@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 import SongUploadDialog from '../components/SongUploadDialog.vue'
 import { useSongsStore } from '../stores/songs'
 import type { Song } from '../types/song'
@@ -8,6 +9,7 @@ import type { Song } from '../types/song'
 const store = useSongsStore()
 const router = useRouter()
 const dialogOpen = ref(false)
+const pendingDelete = ref<Song | null>(null)
 
 onMounted(() => void store.load())
 
@@ -16,6 +18,18 @@ function onUploaded(song: Song): void {
   dialogOpen.value = false
   void store.load()
   void router.push({ name: 'song', params: { id: song.id } })
+}
+
+// The circle × only asks; the dialog decides. The dialog closes at once —
+// a failed delete still reports itself through store.deleteError.
+function requestDelete(song: Song): void {
+  pendingDelete.value = song
+}
+
+function confirmDelete(): void {
+  const song = pendingDelete.value
+  pendingDelete.value = null
+  if (song) void store.remove(song.id)
 }
 </script>
 
@@ -112,7 +126,7 @@ function onUploaded(song: Song): void {
             class="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-clay/50 text-clay transition hover:border-clay hover:bg-clay hover:text-forest focus-visible:outline-2 focus-visible:outline-gold mobile:opacity-100 desktop:opacity-0 desktop:group-hover:opacity-100 desktop:group-focus-within:opacity-100"
             :aria-label="`Delete ${song.title}`"
             :title="`Delete ${song.title}`"
-            @click="store.remove(song.id)"
+            @click="requestDelete(song)"
           >
             <svg
               class="h-4 w-4"
@@ -180,5 +194,15 @@ function onUploaded(song: Song): void {
     :open="dialogOpen"
     @close="dialogOpen = false"
     @uploaded="onUploaded"
+  />
+
+  <!-- The × asks first; only the dialog's Delete button calls the API. -->
+  <ConfirmDialog
+    :open="pendingDelete !== null"
+    title="Delete song?"
+    :message="pendingDelete ? `“${pendingDelete.title}” and its score file will be removed. This can’t be undone.` : ''"
+    confirm-label="Delete"
+    @close="pendingDelete = null"
+    @confirm="confirmDelete"
   />
 </template>

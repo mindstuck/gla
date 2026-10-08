@@ -22,8 +22,16 @@
       >
         <div class="px-6 py-4 text-center">
           <h1 class="font-display text-xl tracking-wide">
-            <!-- The wordmark is the way back to the catalogue from any page. -->
-            <router-link :to="{ name: 'songs' }">GLA</router-link>
+            <!-- The mark and the wordmark are one link, so text-center
+                 centres the pair as a whole (one inline box) rather than the
+                 text alone; align-middle leaves no descender slack. -->
+            <router-link
+              :to="{ name: 'songs' }"
+              class="inline-flex items-center justify-center gap-2 align-middle"
+            >
+              <img src="/logo.png" alt="" draggable="false" class="h-9 w-auto" />
+              <span>GLA</span>
+            </router-link>
           </h1>
         </div>
       </header>

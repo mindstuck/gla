@@ -71,7 +71,7 @@ npm run type-check        # frontend type-check only (frontend/)
 | GET    | `/songs`           | All songs                                     |
 | GET    | `/songs/{id}`      | One song, `404` if missing                    |
 | GET    | `/songs/{id}/file` | Score file bytes, `404` if missing            |
-| POST   | `/songs`           | Upload a score file (multipart, one file)     |
+| POST   | `/songs`           | Upload a score file (multipart: one file, optional title/author) |
 | DELETE | `/songs/{id}`      | Delete the song, then its file (best effort)  |
 
 Response:

@@ -60,13 +60,21 @@ export async function fetchSongById(id: number): Promise<Song | null> {
  * Uploads one score file (multipart, field name "file") and returns the
  * created song, or throws ApiError — the server's `error` message when it
  * rejects the upload (wrong format, empty file, …), the status otherwise.
+ * Title/author travel as optional form fields; blank ones fall back to the
+ * server's defaults (file name for the title).
  *
  * Content-Type is deliberately not set: the browser must add the multipart
  * boundary itself.
  */
-export async function uploadSong(file: File): Promise<Song> {
+export async function uploadSong(
+  file: File,
+  title?: string,
+  author?: string,
+): Promise<Song> {
   const body = new FormData()
   body.append('file', file)
+  if (title) body.append('title', title)
+  if (author) body.append('author', author)
 
   let response: Response
   try {

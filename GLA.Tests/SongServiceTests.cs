@@ -124,6 +124,32 @@ public class SongServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Create_ProvidedTitleAndAuthor_AreTrimmedAndUsed()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateAsync(
+            new MemoryStream([1]), "Whatever.gp4", title: "  Bohemian Rhapsody  ", author: "  Queen  ");
+
+        // The client's metadata wins over the file name.
+        Assert.Equal("Bohemian Rhapsody", result.Title);
+        Assert.Equal("Queen", result.Author);
+        Assert.NotNull(await service.GetByIdAsync(result.Id));
+    }
+
+    [Fact]
+    public async Task Create_BlankTitle_FallsBackToTheFileName()
+    {
+        var service = CreateService();
+
+        var result = await service.CreateAsync(
+            new MemoryStream([1]), "Kashmir.gp4", title: "   ", author: null);
+
+        Assert.Equal("Kashmir", result.Title);
+        Assert.Equal(string.Empty, result.Author);
+    }
+
+    [Fact]
     public async Task Delete_ExistingSong_RemovesRowThenFile()
     {
         var service = CreateService(ParanoidAndroid);

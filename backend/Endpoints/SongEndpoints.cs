@@ -14,7 +14,8 @@ public static class SongEndpoints
             return Results.Ok(songs);
         });
 
-        // Upload: multipart/form-data with exactly one file part. Shape and
+        // Upload: multipart/form-data with exactly one file part plus
+        // optional title/author fields (blank -> server defaults). Shape and
         // format validation lives here / in the service (400s below).
         group.MapPost("", async (HttpRequest request, ISongService songService, CancellationToken cancellationToken) =>
         {
@@ -35,10 +36,15 @@ public static class SongEndpoints
                 return Results.BadRequest(new { error = "The file is empty." });
             }
 
+            // Absent or blank fields fall back to the defaults inside the
+            // service (file name for the title, no author).
+            var title = form["title"].FirstOrDefault();
+            var author = form["author"].FirstOrDefault();
+
             try
             {
                 await using var content = upload.OpenReadStream();
-                var song = await songService.CreateAsync(content, upload.FileName, cancellationToken);
+                var song = await songService.CreateAsync(content, upload.FileName, title, author, cancellationToken);
                 return Results.Created($"/api/songs/{song.Id}", song);
             }
             catch (UnsupportedScoreFileException e)

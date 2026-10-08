@@ -21,7 +21,12 @@ public class SongService(
         return songs.Select(SongDto.From).ToList();
     }
 
-    public async Task<SongDto> CreateAsync(Stream content, string fileName, CancellationToken cancellationToken = default)
+    public async Task<SongDto> CreateAsync(
+        Stream content,
+        string fileName,
+        string? title = null,
+        string? author = null,
+        CancellationToken cancellationToken = default)
     {
         if (!fileStore.IsSupported(fileName))
         {
@@ -31,12 +36,12 @@ public class SongService(
 
         var filePath = await fileStore.SaveAsync(content, fileName, cancellationToken);
 
-        // No metadata parsing on the server: the file name is all we have
-        // until the client loads the score with alphaTab. Author stays empty.
+        // The client may pass title/author with the upload; when it doesn't,
+        // the file name is all we have until the score is loaded with alphaTab.
         var entity = new SongEntity
         {
-            Title = TitleFrom(fileName),
-            Author = string.Empty,
+            Title = TitleFrom(title, fileName),
+            Author = AuthorFrom(author),
             FilePath = filePath,
         };
 
@@ -75,16 +80,32 @@ public class SongService(
         return deleted;
     }
 
-    /// <summary>The uploaded file's name without extension, capped to the column size.</summary>
-    private static string TitleFrom(string fileName)
+    /// <summary>
+    /// An explicitly provided title wins (trimmed, capped to the column);
+    /// otherwise the uploaded file's name without extension.
+    /// </summary>
+    private static string TitleFrom(string? title, string fileName)
     {
-        var name = Path.GetFileName(fileName ?? string.Empty);
-        var title = Path.GetFileNameWithoutExtension(name).Trim();
-        if (title.Length == 0)
+        var provided = title?.Trim();
+        if (provided is { Length: > 0 })
         {
-            title = "Untitled";
+            return provided.Length > 200 ? provided[..200] : provided;
         }
 
-        return title.Length > 200 ? title[..200] : title;
+        var name = Path.GetFileName(fileName ?? string.Empty);
+        var derived = Path.GetFileNameWithoutExtension(name).Trim();
+        if (derived.Length == 0)
+        {
+            derived = "Untitled";
+        }
+
+        return derived.Length > 200 ? derived[..200] : derived;
+    }
+
+    /// <summary>The optional author, trimmed and capped; empty when absent.</summary>
+    private static string AuthorFrom(string? author)
+    {
+        var value = author?.Trim() ?? string.Empty;
+        return value.Length > 200 ? value[..200] : value;
     }
 }
